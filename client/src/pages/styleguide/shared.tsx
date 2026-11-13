@@ -39,3 +39,30 @@ export function useModeTokens(names: readonly string[]) {
 }
 
 export const isHex = (v: string | undefined): v is string => !!v && /^#[0-9a-f]{6}$/i.test(v);
+
+const MODES: Mode[] = ['light', 'dark'];
+
+/** The same mockup in both modes: `.light` / `.dark` on a wrapper flips every token inside it. */
+export function Modes({ children, row = false }: { children: ReactNode; row?: boolean }) {
+  return (
+    <div className={cx('gap-6', row ? 'grid sm:grid-cols-2' : 'space-y-6')}>
+      {MODES.map((m) => (
+        <div key={m} className="min-w-0">
+          <Caption>{m === 'light' ? 'Light' : 'Dark'}</Caption>
+          <div className={cx(m, 'overflow-x-auto bg-paper text-ink', row && 'p-4')}>{children}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** A screen at its real size, shrunk by `scale`. Inert, so none of it takes focus. */
+export function Screen({ w, h, scale = 1, label, children }: { w: number; h: number; scale?: number; label: string; children: ReactNode }) {
+  return (
+    <div role="img" aria-label={label} className="overflow-hidden rounded-panel border border-hairline" style={{ width: w * scale, height: h * scale }}>
+      <div inert className="relative overflow-hidden bg-paper text-ink" style={{ width: w, height: h, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
+        {children}
+      </div>
+    </div>
+  );
+}

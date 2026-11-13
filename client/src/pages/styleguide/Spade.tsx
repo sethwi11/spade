@@ -12,38 +12,11 @@ import { Checkbox } from '../../ui/Checkbox';
 import { QuickAddInput } from '../../ui/fields';
 import { Menu, type MenuItem } from '../../ui/Menu';
 import { SpadeMark } from '../../ui/SpadeMark';
-import { Caption, Section, type Mode } from './shared';
+import { Caption, Modes, Screen, Section } from './shared';
 
 // Static mockups for the Spade redesign (a made-up Tuesday, never real data). Each is drawn at the real size and shrunk to fit.
 
 const mins = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3));
-const MODES: Mode[] = ['light', 'dark'];
-
-/** The same mockup in both modes: `.light` / `.dark` on a wrapper flips every token inside it. */
-function Modes({ children, row = false }: { children: ReactNode; row?: boolean }) {
-  return (
-    <div className={cx('gap-6', row ? 'grid sm:grid-cols-2' : 'space-y-6')}>
-      {MODES.map((m) => (
-        <div key={m} className="min-w-0">
-          <Caption>{m === 'light' ? 'Light' : 'Dark'}</Caption>
-          <div className={cx(m, 'overflow-x-auto bg-paper text-ink', row && 'p-4')}>{children}</div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/** A screen at its real size, shrunk by `scale`. Inert, so none of it takes focus. */
-function Screen({ w, h, scale = 1, label, children }: { w: number; h: number; scale?: number; label: string; children: ReactNode }) {
-  return (
-    <div role="img" aria-label={label} className="overflow-hidden rounded-panel border border-hairline" style={{ width: w * scale, height: h * scale }}>
-      <div inert className="relative overflow-hidden bg-paper text-ink" style={{ width: w, height: h, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
-        {children}
-      </div>
-    </div>
-  );
-}
-
 // ---- the made-up day ----
 
 interface Block { start: string; end: string; title: string; cat: string; color?: CalendarColor; shade: Shade }

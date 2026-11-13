@@ -43,6 +43,11 @@
   /* Toast link (the toast itself is inverted: see the shared block at the bottom). */
   --toast-link: #f0c83c;
 
+  /* Cards on a board: a white surface (an elevated one at night) with a very light lift, on a column well one step off the page. */
+  --card: #ffffff;
+  --shadow-card: 0 1px 2px rgb(0 48 63 / 0.05);
+  --shadow-card-hover: 0 2px 4px rgb(0 48 63 / 0.05), 0 10px 24px rgb(0 48 63 / 0.1);
+
   /* The icon rail: the same deep cerulean in both modes, sky-white labels, honey for where you are. */
   --rail: #00303f;
   --on-rail: #e8f3ef;
@@ -103,6 +108,10 @@
 
   --toast-link: #765800;
 
+  --card: #063a4a;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3);
+  --shadow-card-hover: 0 2px 4px rgb(0 0 0 / 0.3), 0 10px 24px rgb(0 0 0 / 0.45);
+
   /* Slate ink and crimson would nearly vanish on the dark page, so they are lifted. */
   --cal-slate: #9aa0a8;
   --cal-crimson: #c2405a;
@@ -130,6 +139,8 @@
 .light,
 .dark {
   --weekend: color-mix(in srgb, var(--ink) 3%, var(--paper));
+  /* A board column's well: the page, one step toward ink. */
+  --well: color-mix(in srgb, var(--ink) 4%, var(--paper));
   /* The rail's hover wash and its dividers. */
   --rail-hover: color-mix(in srgb, var(--on-rail) 10%, var(--rail));
   --rail-rule: color-mix(in srgb, var(--on-rail) 16%, var(--rail));

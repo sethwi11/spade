@@ -33,6 +33,8 @@
   --color-warning: var(--warning);
   --color-danger: var(--danger);
   --color-weekend: var(--weekend);
+  --color-card: var(--card);
+  --color-well: var(--well);
   --color-rail: var(--rail);
   --color-on-rail: var(--on-rail);
   --color-on-rail-muted: var(--on-rail-muted);
@@ -47,6 +49,8 @@
   --color-heat-4: var(--heat-4);
 
   --shadow-popover: var(--shadow-popover);
+  --shadow-card: var(--shadow-card);
+  --shadow-card-hover: var(--shadow-card-hover);
 }
 
 @theme {
@@ -80,6 +84,8 @@
   /* Corners: 4px for controls and event blocks, 8px for popovers and modals. Nothing rounder except circles. */
   --radius-control: 4px;
   --radius-panel: 8px;
+  /* Cards on a board are the one rounder shape. */
+  --radius-card: 14px;
 
   /* Motion */
   --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);

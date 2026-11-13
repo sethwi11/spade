@@ -2,6 +2,7 @@ import { useToast, ToastHost } from '../ui/Toast';
 import { Segmented } from '../ui/Segmented';
 import { useSettings, type Settings } from '../hooks/useSettings';
 import { CalendarParts } from './styleguide/CalendarParts';
+import { Boards } from './styleguide/Boards';
 import { Colors } from './styleguide/Colors';
 import { Controls } from './styleguide/Controls';
 import { Directions } from './styleguide/Directions';
@@ -12,6 +13,7 @@ import { Tasks } from './styleguide/Tasks';
 import { Typography } from './styleguide/Type';
 
 const SECTIONS = [
+  ['boards', 'Rail and boards'],
   ['color', 'Color'],
   ['type', 'Type'],
   ['controls', 'Controls'],
@@ -65,6 +67,7 @@ export default function StyleGuide() {
         </header>
 
         <main className="space-y-14">
+          <Boards />
           <Colors />
           <Typography />
           <Controls />
