@@ -46,25 +46,6 @@ export function ApplicationCard({ application: a, today, followUp, counts, files
 
   return (
     <Card>
-      <div className="absolute top-2.5 right-2.5">
-        <Menu
-          fixed
-          align="end"
-          items={[
-            { label: 'Open', onSelect: () => navigate(page) },
-            { label: 'Add interview', onSelect: () => addInterview(a) },
-            { label: 'Add to-do', onSelect: () => addTodo(a) },
-            ...APPLICATION_STATUSES.filter((s) => s !== a.status).map((s) => ({ label: `Move to ${s}`, onSelect: () => onMove(s) })),
-            { label: 'Edit or delete…', onSelect: () => openDialog({ kind: 'application', id: a.id }) },
-          ]}
-          trigger={(props) => (
-            <button type="button" aria-label={`More for ${a.company}`} title="More" {...props} className="grid size-7 place-items-center rounded-control text-ink-muted hover:bg-well hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent">
-              <MoreHorizontal className="size-4" aria-hidden />
-            </button>
-          )}
-        />
-      </div>
-
       {pill && (
         <div className="mb-3 pr-8">
           {followUp && a.status === 'Applied' ? (
@@ -118,6 +99,25 @@ export function ApplicationCard({ application: a, today, followUp, counts, files
           ))}
         </div>
       )}
+
+      <div className="absolute top-2.5 right-2.5">
+        <Menu
+          fixed
+          align="end"
+          items={[
+            { label: 'Open', onSelect: () => navigate(page) },
+            { label: 'Add interview', onSelect: () => addInterview(a) },
+            { label: 'Add to-do', onSelect: () => addTodo(a) },
+            ...APPLICATION_STATUSES.filter((s) => s !== a.status).map((s) => ({ label: `Move to ${s}`, onSelect: () => onMove(s) })),
+            { label: 'Edit or delete…', onSelect: () => openDialog({ kind: 'application', id: a.id }) },
+          ]}
+          trigger={(props) => (
+            <button type="button" aria-label={`More for ${a.company}`} title="More" {...props} className="grid size-7 place-items-center rounded-control text-ink-muted hover:bg-well hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent">
+              <MoreHorizontal className="size-4" aria-hidden />
+            </button>
+          )}
+        />
+      </div>
     </Card>
   );
 }

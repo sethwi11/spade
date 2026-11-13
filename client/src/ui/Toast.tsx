@@ -65,7 +65,7 @@ export function ToastView({ message, onUndo, onDismiss, className, ...rest }: To
 
 const DURATION_MS = 5000;
 
-/** Shows the current toast bottom-center (above the tab bar on a phone, so it never covers it) and dismisses it after 5 seconds. */
+/** Shows the current toast bottom-center (above the tab bar on a phone, so it never covers it) and dismisses it after 5 seconds. On a wide screen it sits above the "Add task" links at the foot of a board's columns, so adding a second to-do straight after the first isn't blocked by the first one's toast. */
 export function ToastHost({ toast, onDismiss }: { toast: ToastMessage | null; onDismiss: () => void }) {
   const [paused, setPaused] = useState(false);
   const timer = useRef<number | undefined>(undefined);
@@ -78,7 +78,7 @@ export function ToastHost({ toast, onDismiss }: { toast: ToastMessage | null; on
 
   return (
     // The region stays in the page so screen readers announce each new message.
-    <div aria-live="polite" className="pointer-events-none fixed right-4 bottom-24 left-4 z-50 sm:right-auto sm:bottom-6 sm:left-1/2 sm:-translate-x-1/2">
+    <div aria-live="polite" className="pointer-events-none fixed right-4 bottom-24 left-4 z-50 sm:right-auto sm:bottom-20 sm:left-1/2 sm:-translate-x-1/2">
       {toast && (
         <ToastView
           key={toast.id}

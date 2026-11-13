@@ -127,8 +127,8 @@ const Switch_ = ({ on = false, children }: { on?: boolean; children: ReactNode }
 
 const Seg = ({ items, value }: { items: readonly [string, LucideIcon][]; value: string }) => (
   <span role="img" aria-label="View" className="inline-flex h-8 overflow-hidden rounded-control border border-rule">
-    {items.map(([label, Icon]) => (
-      <span key={label} className={cx('inline-flex items-center gap-2 border-l border-rule px-3 text-body first:border-l-0', label === value ? 'bg-ink text-paper' : 'text-ink')}>
+    {items.map(([label, Icon], i) => (
+      <span key={i} className={cx('inline-flex items-center gap-2 border-l border-rule px-3 text-body first:border-l-0', label === value ? 'bg-ink text-paper' : 'text-ink')}>
         <Icon className="size-4" aria-hidden />
         {label}
       </span>

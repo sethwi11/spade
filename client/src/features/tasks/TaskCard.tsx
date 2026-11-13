@@ -52,28 +52,6 @@ export function TaskCard({ task, today, onMove, select }: TaskCardProps) {
           {task.priority === 'high' && !done && <span aria-hidden className="absolute inset-y-4 left-0 w-[3px] rounded-r-full bg-accent" />}
           <span className="sr-only">{PRIORITY_LABEL[task.priority]}.</span>
 
-          {!done && (
-            <div className="absolute top-2.5 right-2.5">
-              <Menu
-                fixed
-                align="end"
-                items={[
-                  { label: 'Move to Today', disabled: column === 'today', onSelect: () => onMove(task, 'today') },
-                  { label: 'Pick a day…', onSelect: () => onMove(task, 'pick') },
-                  { label: 'Clear date', disabled: task.dueDate === null, onSelect: () => onMove(task, 'clear') },
-                  { label: 'Set aside time…', onSelect: () => openDialog({ kind: 'schedule', taskId: task.id }) },
-                  { label: 'Edit', onSelect: edit },
-                  { label: 'Delete', onSelect: () => void removeTask(task) },
-                ]}
-                trigger={(props) => (
-                  <button type="button" aria-label={`More for “${task.title}”`} title="More" {...props} className="grid size-7 place-items-center rounded-control text-ink-muted hover:bg-well hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent">
-                    <MoreHorizontal className="size-4" aria-hidden />
-                  </button>
-                )}
-              />
-            </div>
-          )}
-
           <div className="flex items-start gap-3">
             {select ? (
               <Checkbox round checked={select.picked} onChange={select.onToggle} label={`Select "${task.title}"`} className="-m-1.5" />
@@ -113,6 +91,28 @@ export function TaskCard({ task, today, onMove, select }: TaskCardProps) {
               )}
             </div>
           </div>
+
+          {!done && (
+            <div className="absolute top-2.5 right-2.5">
+              <Menu
+                fixed
+                align="end"
+                items={[
+                  { label: 'Move to Today', disabled: column === 'today', onSelect: () => onMove(task, 'today') },
+                  { label: 'Pick a day…', onSelect: () => onMove(task, 'pick') },
+                  { label: 'Clear date', disabled: task.dueDate === null, onSelect: () => onMove(task, 'clear') },
+                  { label: 'Set aside time…', onSelect: () => openDialog({ kind: 'schedule', taskId: task.id }) },
+                  { label: 'Edit', onSelect: edit },
+                  { label: 'Delete', onSelect: () => void removeTask(task) },
+                ]}
+                trigger={(props) => (
+                  <button type="button" aria-label={`More for “${task.title}”`} title="More" {...props} className="grid size-7 place-items-center rounded-control text-ink-muted hover:bg-well hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent">
+                    <MoreHorizontal className="size-4" aria-hidden />
+                  </button>
+                )}
+              />
+            </div>
+          )}
         </Card>
       </div>
     </div>
