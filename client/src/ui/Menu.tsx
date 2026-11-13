@@ -122,7 +122,7 @@ export function Menu({ trigger, items, align = 'start', side = 'bottom', classNa
               )}
             >
               {item.icon && <item.icon className="size-4" aria-hidden />}
-              <span className="flex-1">{item.label}</span>
+              <span className="flex-1 whitespace-nowrap">{item.label}</span>
               {item.hint && <span className="text-meta text-ink-muted">{item.hint}</span>}
             </button>
           ))}

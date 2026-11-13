@@ -1,7 +1,7 @@
 import { buildEvent, expandOccurrences, type Event, type PlanItem } from '@todo/shared';
 import { describe, expect, it } from 'vitest';
 import { buildBlank } from '../calendar/testHelpers';
-import { agendaRange, currentItem, duringBlock, layoutLanes, nextItem, nextUpcoming, openAtMinutes, summarize, supposedToBeDoing } from './todayModel';
+import { agendaRange, currentItem, duringBlock, homeDefaults, layoutLanes, nextItem, nextUpcoming, openAtMinutes, summarize, supposedToBeDoing } from './todayModel';
 
 const NOW = '2026-11-04T12:00:00.000Z';
 let n = 0;
@@ -133,5 +133,28 @@ describe('where the agenda opens', () => {
     expect(openAtMinutes(plan, '2026-11-10T06:59')).toBeNull(); // before this day's wake time
     expect(openAtMinutes(plan, '2026-11-10T22:30')).toBeNull(); // bedtime: the day is over
     expect(openAtMinutes(plan, '2026-11-11T01:00')).toBeNull();
+  });
+});
+
+describe('homeDefaults (Add task and Add event on the home screen)', () => {
+  const TODAY = '2026-11-04';
+  const block = item('Deep work', '08:30', '09:45', { calendarId: 'cal-skills' });
+
+  it('in a block: its category for a task, and its own time and category for an event', () => {
+    const d = homeDefaults(block, '2026-11-04T08:40', TODAY);
+    expect(d.task).toEqual({ dueDate: TODAY, calendarId: 'cal-skills' });
+    expect(d.event).toEqual({ start: '2026-11-04T08:30', end: '2026-11-04T09:45', calendarId: 'cal-skills' });
+  });
+
+  it('in open or free time there is no category, and an event starts at the next hour for an hour', () => {
+    for (const current of [item('Open time', '11:15', '12:00', { kind: 'open' }), item('Break', '11:15', '12:00', { priority: 'free', calendarId: 'cal-skills' }), undefined]) {
+      const d = homeDefaults(current, '2026-11-04T11:20', TODAY);
+      expect(d.task.calendarId).toBeUndefined();
+      expect(d.event).toEqual({ start: '2026-11-04T12:00', end: '2026-11-04T13:00' });
+    }
+  });
+
+  it('a block without a category leaves the category empty', () => {
+    expect(homeDefaults(item('Walk', '07:00', '07:30'), '2026-11-04T07:10', TODAY).task.calendarId).toBeUndefined();
   });
 });

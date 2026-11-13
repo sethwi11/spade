@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router';
 import { SkipForward } from 'lucide-react';
 import { spanOn, timePart, type PlanItem } from '@todo/shared';
 import { useRoutine } from '../../actions/useRoutineActions';
@@ -10,11 +9,10 @@ import { Field, Input, Select } from '../../ui/fields';
 import { Dialog } from '../../ui/Panel';
 import { formatTimeRange } from '../calendar/format';
 
-/** Change a routine block for one day only: skip it, move it, or replace it with a to-do or a new event. The template itself is edited on the Week page. */
+/** Change a routine block for one day only: skip it, move it, or replace it with a to-do or a new event. "Change it every week" opens the block itself. */
 export function DayChangeDialog({ item, date, onClose }: { item: PlanItem | null; date: string; onClose: () => void }) {
   const { tasks, openDialog } = useApp();
   const routine = useRoutine();
-  const navigate = useNavigate();
   const [start, setStart] = useState('');
   const [end, setEnd] = useState('');
   const [taskId, setTaskId] = useState('');
@@ -93,7 +91,15 @@ export function DayChangeDialog({ item, date, onClose }: { item: PlanItem | null
             >
               Replace with a new event
             </Button>
-            <Button variant="ghost" onClick={() => navigate(`/week?block=${item.sourceId}`)}>
+            <Button
+              variant="ghost"
+              disabled={!item.sourceId}
+              onClick={() => {
+                if (!item.sourceId) return;
+                onClose();
+                openDialog({ kind: 'block', mode: 'edit', id: item.sourceId });
+              }}
+            >
               Change it every week
             </Button>
           </div>

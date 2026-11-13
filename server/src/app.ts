@@ -107,7 +107,7 @@ export function createApp(repos: Repositories, options: { uploadsDir: string; cl
       res.status(409).json({ error: 'PopupsOff', message: 'Pop-ups are off in this server (start it with POPUPS=on).' });
       return;
     }
-    options.sendPopup({ at: '', title: 'Planner pop-ups are working', body: 'This is what a start or stop pop-up looks like.', url: '/', keys: [] });
+    options.sendPopup({ at: '', title: 'Spade pop-ups are working', body: 'This is what a start or stop pop-up looks like.', url: '/', keys: [] });
     res.status(204).end();
   });
 

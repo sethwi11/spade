@@ -37,6 +37,8 @@ export interface TaskRowProps {
   dragging?: boolean;
   /** It belongs to the block happening right now: a tint in its calendar color and a "Now" tag. */
   now?: boolean;
+  /** Choosing several to-dos: the check box picks the row instead of completing it. */
+  select?: { picked: boolean; onToggle: () => void };
 }
 
 // The sequence, from the click: the line draws for 250ms; at 400ms the row starts to fade and collapse (250ms); when that finishes, the change is committed and the list drops the row.
@@ -72,6 +74,7 @@ export function TaskRow({
   liStyle,
   dragging = false,
   now = false,
+  select,
 }: TaskRowProps) {
   const reduced = useReducedMotion();
   const [leaving, setLeaving] = useState<'idle' | 'striking' | 'collapsing'>('idle');
@@ -139,16 +142,16 @@ export function TaskRow({
       <div className="min-h-0 overflow-hidden">
         <div
           style={now && calendar ? calendarVars(calendar.color) : undefined}
-          className={cx('group relative flex min-h-11 items-center gap-1 border-b border-hairline pr-1 pl-2 transition-colors duration-150 ease-out hover:bg-surface focus-within:bg-surface', now && calendar && 'bg-(color:--c-soft)')}
+          className={cx('group relative flex min-h-11 items-center gap-1 border-b border-hairline pr-1 pl-2 transition-colors duration-150 ease-out hover:bg-surface focus-within:bg-surface', now && calendar && 'bg-(color:--c-soft)', select?.picked && 'bg-accent-soft hover:bg-accent-soft')}
         >
           {bar && <span aria-hidden className={cx('absolute left-0 w-[3px]', bar)} />}
           <span className="sr-only">{PRIORITY_LABEL[priority]}.</span>
 
-          <Checkbox checked={checked} onChange={handleToggle} label={`Mark "${title}" as ${checked ? 'not done' : 'done'}`} />
+          {select ? <Checkbox checked={select.picked} onChange={select.onToggle} label={`Select "${title}"`} /> : <Checkbox checked={checked} onChange={handleToggle} label={`Mark "${title}" as ${checked ? 'not done' : 'done'}`} />}
 
           <div className="min-w-0 flex-1 py-2.5 pl-1">
             {onOpen ? (
-              <button type="button" onClick={onOpen} className="block max-w-full text-left text-body text-ink">
+              <button type="button" onClick={select ? select.onToggle : onOpen} className="block max-w-full text-left text-body text-ink">
                 <span data-done={checked} className="strike break-words">
                   {title}
                 </span>

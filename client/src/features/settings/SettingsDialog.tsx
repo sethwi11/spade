@@ -6,6 +6,7 @@ import { useApp } from '../../app/AppContext';
 import { ApiError } from '../../api/client';
 import { backupApi, type ImportSummary } from '../../api/backup';
 import { useAppSettings } from '../../data/useApplications';
+import { useSettings } from '../../hooks/useSettings';
 import { Button, IconButton } from '../../ui/Button';
 import { Checkbox } from '../../ui/Checkbox';
 import { Input, Textarea } from '../../ui/fields';
@@ -69,6 +70,8 @@ export function SettingsDialog() {
           <ThemeToggle />
         </div>
 
+        <HiddenPages />
+
         <Popups />
 
         <OfferGoal />
@@ -124,6 +127,20 @@ export function SettingsDialog() {
         </div>
       </div>
     </Dialog>
+  );
+}
+
+/** Week, Money, Path and Review are out of the menu; this brings them back. Kept on this device, like the theme. */
+function HiddenPages() {
+  const { settings, update } = useSettings();
+  return (
+    <label className={`${row} cursor-pointer`}>
+      <span>
+        <span className="block text-body">Show hidden pages</span>
+        <span className="block text-meta text-ink-muted">Week, Money, Path and Review are out of the menu. Their data, links and pop-ups work either way.</span>
+      </span>
+      <Checkbox checked={settings.showHiddenPages} onChange={(e) => update({ showHiddenPages: e.target.checked })} label="Show hidden pages" />
+    </label>
   );
 }
 
@@ -321,7 +338,7 @@ function Popups() {
                 );
               })}
             </div>
-            <p className="mt-1.5 text-meta text-ink-muted">Each block can also turn its own pop-ups off on the Week page.</p>
+            <p className="mt-1.5 text-meta text-ink-muted">Each routine block can also turn its own pop-ups off: click it on the Calendar, then Change it every week.</p>
           </div>
         </>
       )}

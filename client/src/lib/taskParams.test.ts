@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseTasksQuery, tasksUrl } from './taskParams';
+import { inCalendar, parseTasksQuery, tasksUrl, UNCATEGORIZED } from './taskParams';
 
 const parse = (qs: string) => parseTasksQuery(new URLSearchParams(qs));
 
@@ -23,5 +23,19 @@ describe('Tasks page URL', () => {
     expect(tasksUrl({ tab: 'upcoming', calendarId: 'c1' })).toBe('/tasks?view=upcoming&calendar=c1');
     const q = { tab: 'completed', calendarId: 'c1', date: '2026-11-10' } as const;
     expect(parse(tasksUrl(q).split('?')[1]!)).toEqual(q);
+  });
+});
+
+describe('Uncategorized', () => {
+  it('is a calendar value of its own that survives the URL', () => {
+    expect(tasksUrl({ calendarId: UNCATEGORIZED })).toBe('/tasks?calendar=none');
+    expect(parse('calendar=none').calendarId).toBe(UNCATEGORIZED);
+  });
+
+  it('matches only to-dos with no calendar, while a calendar id matches its own', () => {
+    expect(inCalendar({ calendarId: null }, UNCATEGORIZED)).toBe(true);
+    expect(inCalendar({ calendarId: 'c1' }, UNCATEGORIZED)).toBe(false);
+    expect(inCalendar({ calendarId: 'c1' }, 'c1')).toBe(true);
+    expect(inCalendar({ calendarId: null }, 'c1')).toBe(false);
   });
 });

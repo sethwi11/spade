@@ -12,11 +12,13 @@ interface PageHeaderProps {
   aside?: string;
   /** What the quick-add box fills in for tasks added from this page. */
   quickAddDefaults?: TaskDefaults;
+  /** A control beside the quick-add bar (the Tasks page puts its Calendars button here). */
+  actions?: ReactNode;
   children?: ReactNode;
 }
 
 /** The top of every page: the title on the left; quick add and the theme toggle on the right. */
-export function PageHeader({ title, subtitle, aside, quickAddDefaults, children }: PageHeaderProps) {
+export function PageHeader({ title, subtitle, aside, quickAddDefaults, actions, children }: PageHeaderProps) {
   return (
     <header className="mb-8">
       <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-5">
@@ -30,7 +32,8 @@ export function PageHeader({ title, subtitle, aside, quickAddDefaults, children 
           )}
         </div>
         <div className="flex w-full items-center gap-4 sm:w-auto">
-          <QuickAdd defaults={quickAddDefaults} className="min-w-0 flex-1 sm:w-72 sm:flex-none" />
+          {actions}
+          <QuickAdd defaults={quickAddDefaults} className="min-w-0 flex-1 sm:w-80 sm:flex-none" />
           <ThemeToggle className="max-sm:hidden" />
         </div>
       </div>

@@ -26,6 +26,29 @@ describe('local date helpers', () => {
   });
 });
 
+describe('Today, Tomorrow and Yesterday at every time of day', () => {
+  // The task is due Thursday Nov 12; the label depends only on the date the clock shows, never the hour.
+  const label = (clock: Date, due = '2026-11-12') => formatDueDate(due, todayLocalISO(clock));
+
+  it('says Tomorrow until midnight, Today from midnight to the last minute, then Yesterday', () => {
+    expect(label(new Date(2026, 10, 11, 0, 0))).toBe('Tomorrow');
+    expect(label(new Date(2026, 10, 11, 23, 59))).toBe('Tomorrow');
+    expect(label(new Date(2026, 10, 12, 0, 0))).toBe('Today');
+    expect(label(new Date(2026, 10, 12, 12, 0))).toBe('Today');
+    expect(label(new Date(2026, 10, 12, 23, 59))).toBe('Today');
+    expect(label(new Date(2026, 10, 13, 0, 0))).toBe('Yesterday');
+  });
+
+  it('stays right on the days that are 23 or 25 hours long, and across the new year', () => {
+    expect(formatDueDate('2026-11-01', '2026-10-31')).toBe('Tomorrow'); // clocks go back on Nov 1
+    expect(formatDueDate('2026-11-02', '2026-11-01')).toBe('Tomorrow'); // a 25-hour day
+    expect(formatDueDate('2027-03-14', '2027-03-13')).toBe('Tomorrow'); // clocks go forward on Mar 14
+    expect(formatDueDate('2027-03-15', '2027-03-14')).toBe('Tomorrow'); // a 23-hour day
+    expect(formatDueDate('2027-01-01', '2026-12-31')).toBe('Tomorrow');
+    expect(formatDueDate('2026-12-31', '2027-01-01')).toBe('Yesterday');
+  });
+});
+
 describe('formatCountdown', () => {
   const min = 60_000;
   it('formats minutes, hours, and days', () => {

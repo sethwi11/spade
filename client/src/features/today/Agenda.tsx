@@ -71,19 +71,21 @@ export function Agenda({ plan, now, onOpen }: { plan: DayPlan; now: string; onOp
           />
         );
         const className = cx('absolute overflow-hidden rounded-control text-left text-ink', blockPadding(minutes), look.className, past && 'opacity-60', current && 'outline-2 outline-offset-1 outline-accent');
+        // The label sits above the time line, on a plate in the block's own color, so the line passes under it and never strikes through a letter.
+        const label = <div className="relative z-10 w-fit max-w-full bg-(color:--plate)">{body}</div>;
         const tooltip = [item.title, category, time, clash, ...notes].filter(Boolean).join(' · ');
         return item.kind === 'open' ? (
           <div key={item.key} style={style} title={tooltip} className={cx(className, 'text-ink-muted')}>
-            {body}
+            {label}
           </div>
         ) : (
-          <button key={item.key} type="button" style={style} title={tooltip} className={cx(className, 'transition-[filter] hover:brightness-95')} onClick={(e) => onOpen(item, e.currentTarget)} aria-current={current ? 'time' : undefined}>
-            {body}
+          <button key={item.key} type="button" style={style} title={tooltip} className={cx(className, 'hover:inset-ring-1 hover:inset-ring-ink-muted')} onClick={(e) => onOpen(item, e.currentTarget)} aria-current={current ? 'time' : undefined}>
+            {label}
           </button>
         );
       })}
       {nowAt >= from && nowAt <= to && (
-        <div aria-hidden className="pointer-events-none absolute right-0 h-0.5 bg-accent" style={{ top: y(nowAt), left: `calc(${GUTTER} - 0.5rem)` }}>
+        <div aria-hidden className="pointer-events-none absolute right-0 z-[5] h-0.5 bg-accent" style={{ top: y(nowAt), left: `calc(${GUTTER} - 0.5rem)` }}>
           <span className="absolute -top-[3px] -left-1 size-2 rounded-full bg-accent" />
         </div>
       )}

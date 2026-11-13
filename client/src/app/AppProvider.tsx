@@ -10,6 +10,7 @@ import { CalendarDialog } from '../features/calendar/CalendarDialog';
 import { CourseDialog } from '../features/courses/CourseDialog';
 import { SemesterDialog } from '../features/courses/SemesterDialog';
 import { EventDialog } from '../features/events/EventDialog';
+import { RoutineDialogs } from '../features/week/RoutineDialogs';
 import { SettingsDialog } from '../features/settings/SettingsDialog';
 import { ShortcutsDialog } from '../features/settings/ShortcutsDialog';
 import { ImportLayer } from '../features/import/ImportLayer';
@@ -125,6 +126,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
       };
     },
     [data, deleteTask],
+  );
+
+  const setCalendarFor = useCallback(
+    async (picked: Task[], calendarId: string | null) => {
+      const done: Task[] = [];
+      for (const t of picked) if (t.calendarId !== calendarId && (await updateTask(t.id, { calendarId }))) done.push(t);
+      if (done.length === 0) return;
+      const where = calendarId ? `“${calendars.find((c) => c.id === calendarId)?.name ?? 'that calendar'}”` : 'no calendar';
+      // Each to-do goes back to the calendar it had.
+      showToast(`Set ${done.length} ${done.length === 1 ? 'to-do' : 'to-dos'} to ${where}`, () => void Promise.all(done.map((t) => updateTask(t.id, { calendarId: t.calendarId }))));
+    },
+    [updateTask, calendars, showToast],
   );
 
   const moveTask = useCallback(
@@ -255,6 +268,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     toggleCalendarHidden,
     rescheduleTask,
     addTasks,
+    setCalendarFor,
     startImport: importer.start,
     chooseFilesToImport: (options) => {
       nextPickOptions.current = options;
@@ -290,6 +304,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         {children}
         <TaskDialog />
         <EventDialog />
+        <RoutineDialogs />
         <CourseDialog />
         <SemesterDialog />
         <ApplicationDialog />

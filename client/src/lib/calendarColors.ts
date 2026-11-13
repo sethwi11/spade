@@ -17,8 +17,9 @@ export function shadeFor(item: { kind: PlanKind; priority: RoutinePriority | nul
   return item.kind === 'routine' && item.priority !== 'commitment' ? 'soft' : 'solid';
 }
 
-/** Style and classes that shade a block for its whole length. */
+/** Style and classes that shade a block for its whole length. `--plate` is the fill itself, for text that has to sit over a line drawn across the block. */
 export function shadeProps(color: CalendarColor | null, shade: Shade): { style: CSSProperties; className: string } {
-  if (shade === 'free' || !color) return { style: { '--c': 'var(--rule)' } as CSSProperties, className: 'hatch' };
-  return { style: calendarVars(color), className: shade === 'solid' ? 'border-l-4 border-l-(color:--c) bg-(color:--c-strong)' : 'border-l-[3px] border-l-(color:--c) bg-(color:--c-soft)' };
+  if (shade === 'free' || !color) return { style: { '--c': 'var(--rule)', '--plate': 'var(--paper)' } as CSSProperties, className: 'hatch' };
+  const plate = shade === 'solid' ? 'var(--c-strong)' : 'var(--c-soft)';
+  return { style: { ...calendarVars(color), '--plate': plate } as CSSProperties, className: shade === 'solid' ? 'border-l-4 border-l-(color:--c) bg-(color:--c-strong)' : 'border-l-[3px] border-l-(color:--c) bg-(color:--c-soft)' };
 }

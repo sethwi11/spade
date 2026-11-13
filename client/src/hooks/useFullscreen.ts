@@ -1,49 +1,15 @@
-import { useEffect, useSyncExternalStore } from 'react';
+import { useEffect } from 'react';
 
-// True full screen for the whole app (the Fullscreen API on the page's root), so navigation keeps working inside it.
-
-const KEY = 'planner.fullscreen';
-const subscribe = (notify: () => void) => {
-  document.addEventListener('fullscreenchange', notify);
-  return () => document.removeEventListener('fullscreenchange', notify);
-};
-const save = (on: boolean) => {
-  try {
-    localStorage.setItem(KEY, on ? '1' : '');
-  } catch {
-    // Private mode: nothing to remember with.
-  }
-};
-
-/** Whether the app was in full screen when it was last closed (browsers need a click to go back in). */
-export function wasFullscreen(): boolean {
-  try {
-    return localStorage.getItem(KEY) === '1' && !document.fullscreenElement;
-  } catch {
-    return false;
-  }
-}
-
-export const forgetFullscreen = () => save(false);
+// Spade runs in its own full-screen space, so there is no button for this. Shift+F stays for a window that isn't full screen.
 
 const toggle = () => {
   if (document.fullscreenElement) void document.exitFullscreen();
   else void document.documentElement.requestFullscreen().catch(() => {});
 };
 
-/** Full screen on or off, and a toggle. Esc leaves full screen too (the browser does that). */
-export function useFullscreen() {
-  const on = useSyncExternalStore(subscribe, () => document.fullscreenElement !== null, () => false);
-  return { on, toggle, supported: typeof document !== 'undefined' && document.fullscreenEnabled };
-}
-
-/** Once per screen (the app shell or the display view): Shift+F toggles full screen, and the choice is remembered for next time. */
+/** Shift+F turns full screen on or off. */
 export function useFullscreenShortcut() {
   useEffect(() => {
-    // Closing the window can also end full screen; that exit must not erase the choice.
-    let closing = false;
-    const onClose = () => (closing = true);
-    const onChange = () => !closing && save(document.fullscreenElement !== null);
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
       const typing = t && (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName));
@@ -52,13 +18,7 @@ export function useFullscreenShortcut() {
         toggle();
       }
     };
-    window.addEventListener('pagehide', onClose);
-    document.addEventListener('fullscreenchange', onChange);
     window.addEventListener('keydown', onKey);
-    return () => {
-      window.removeEventListener('pagehide', onClose);
-      document.removeEventListener('fullscreenchange', onChange);
-      window.removeEventListener('keydown', onKey);
-    };
+    return () => window.removeEventListener('keydown', onKey);
   }, []);
 }

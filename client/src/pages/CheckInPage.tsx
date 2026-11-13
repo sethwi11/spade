@@ -175,7 +175,7 @@ export default function CheckInPage() {
       </section>
 
       <div className="mt-8 flex flex-wrap gap-2">
-        <Button variant="primary" onClick={() => navigate('/')}>
+        <Button variant="primary" onClick={() => navigate('/today')}>
           Done for today
         </Button>
         <Button variant="secondary" onClick={() => navigate(`/journal?date=${date}`)}>

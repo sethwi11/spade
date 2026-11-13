@@ -1,7 +1,8 @@
-import { useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { CalendarClock, Plus, X } from 'lucide-react';
-import { isOpen, PRIORITIES, RECURRENCES, type Priority, type Recurrence, type Subtask, type Task } from '@todo/shared';
+import { isOpen, PRIORITIES, RECURRENCES, suggestCalendar, type Priority, type Recurrence, type Subtask, type Task } from '@todo/shared';
 import { useApp, type TaskDefaults } from '../../app/AppContext';
+import { calendarVars } from '../../lib/calendarColors';
 import { cx } from '../../lib/cx';
 import { Button, IconButton } from '../../ui/Button';
 import { Checkbox } from '../../ui/Checkbox';
@@ -69,9 +70,9 @@ export function TaskDialog() {
 }
 
 function TaskForm({ task, defaults }: { task: Task | null; defaults: TaskDefaults }) {
-  const { calendars, applications, addTask, saveTask, closeDialog, showToast } = useApp();
+  const { calendars, applications, tasks, addTask, saveTask, closeDialog, showToast } = useApp();
 
-  const [title, setTitle] = useState(task?.title ?? '');
+  const [title, setTitle] = useState(task?.title ?? defaults.title ?? '');
   const [notes, setNotes] = useState(task?.notes ?? '');
   const [dueDate, setDueDate] = useState(task?.dueDate ?? defaults.dueDate ?? '');
   const [dueTime, setDueTime] = useState(task?.dueTime ?? '');
@@ -86,6 +87,11 @@ function TaskForm({ task, defaults }: { task: Task | null; defaults: TaskDefault
   const [draft, setDraft] = useState('');
   const [titleError, setTitleError] = useState<string | undefined>();
   const [pendingFiles, setPendingFiles] = useState<File[]>([]); // for a new task: uploaded once it's saved
+  // A calendar the title points to, offered (never set) while none is chosen.
+  const suggested = useMemo(() => {
+    const id = calendarId ? null : suggestCalendar(title, calendars, tasks);
+    return calendars.find((c) => c.id === id);
+  }, [calendarId, title, calendars, tasks]);
 
   function addSubtask() {
     const text = draft.trim();
@@ -159,18 +165,27 @@ function TaskForm({ task, defaults }: { task: Task | null; defaults: TaskDefault
             </Select>
           )}
         </Field>
-        <Field label="Calendar">
-          {(p) => (
-            <Select {...p} value={calendarId} onChange={(e) => setCalendarId(e.target.value)}>
-              <option value="">None</option>
-              {calendars.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </Select>
+        <div>
+          <Field label="Calendar">
+            {(p) => (
+              <Select {...p} value={calendarId} onChange={(e) => setCalendarId(e.target.value)}>
+                <option value="">None</option>
+                {calendars.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </Field>
+          {suggested && (
+            <button type="button" onClick={() => setCalendarId(suggested.id)} style={calendarVars(suggested.color)} className="mt-1.5 inline-flex h-7 max-w-full items-center gap-1.5 rounded-control border border-rule px-2 text-meta text-ink transition-colors duration-150 ease-out hover:bg-accent-soft">
+              <span aria-hidden className="size-2 shrink-0 bg-(color:--c)" />
+              <span className="truncate">Suggested: {suggested.name}</span>
+              <span className="shrink-0 font-medium text-accent-ink">Use</span>
+            </button>
           )}
-        </Field>
+        </div>
       </div>
 
       {(applications.length > 0 || applicationId) && (

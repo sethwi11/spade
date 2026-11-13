@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { blockMinutesFor, combine, describeLoad, minutesBetween, selfIds, timePart, type DayLoad, type EventOccurrence, type PlanItem } from '@todo/shared';
+import { ListChecks } from 'lucide-react';
 import { BlockText, blockPadding, TodoBlock } from '../../ui/blocks';
+import { Checkbox } from '../../ui/Checkbox';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
@@ -9,7 +11,8 @@ import type { DateSelectArg, EventClickArg, EventContentArg, EventDropArg, Event
 import type { DropArg, EventResizeDoneArg } from '@fullcalendar/interaction';
 import { useApp } from '../../app/AppContext';
 import { cx } from '../../lib/cx';
-import { anchorOf, type PopoverAnchor } from '../../ui/Popover';
+import { formatTime } from '../../lib/dates';
+import { anchorOf, Popover, type PopoverAnchor } from '../../ui/Popover';
 import '../../styles/calendar.css';
 import { describeConflicts, formatTimeRange } from './format';
 import { shadeFor, shadeProps } from '../../lib/calendarColors';
@@ -53,7 +56,7 @@ interface CalendarViewProps {
   onOpenDay: (date: string) => void;
   /** Month view only: how heavy each day is, to shade it (null = the workload map is off). */
   loads?: Map<string, DayLoad> | null;
-  /** Routine blocks to draw behind everything else (read-only here; edited on the Week page). */
+  /** Routine blocks to draw behind everything else (a click opens the day's changes, and from there the block itself). */
   routine?: readonly PlanItem[];
   onOpenRoutine?: (item: PlanItem) => void;
   /** To-dos with a time inside a routine block, drawn on top of it, by the block's key. */
@@ -64,6 +67,9 @@ interface CalendarViewProps {
 export function CalendarView({ view, date, items, hasSelection, onSelect, onOpenItem, onOpenDay, loads = null, routine = NO_ROUTINE, onOpenRoutine, chips = NO_CHIPS }: CalendarViewProps) {
   const { clashesFor, editEvent, rescheduleTask, toggleTask, tasks, scheduleTask, moveTimeBlock, showToast } = useApp();
   const [tip, setTip] = useState<{ load: DayLoad; x: number; y: number } | null>(null);
+  // Two or more to-dos in one routine block fold into a "+N to-dos" chip; this is the list it opens (by the block's key, so it stays current as you tick things off).
+  const [group, setGroup] = useState<{ key: string; anchor: PopoverAnchor } | null>(null);
+  const grouped = group ? (chips.get(group.key) ?? []) : [];
   const ref = useRef<FullCalendar>(null);
   const container = useRef<HTMLDivElement>(null);
 
@@ -101,6 +107,9 @@ export function CalendarView({ view, date, items, hasSelection, onSelect, onOpen
     const target = info.jsEvent.target as HTMLElement;
     // The checkbox on a to-do does its own thing; clicking it shouldn't also open the details.
     if (target.closest('input[type=checkbox]')) return;
+    // The "+N to-dos" chip opens the list of them.
+    const folded = target.closest<HTMLElement>('[data-chips]');
+    if (folded) return setGroup({ key: folded.dataset.chips!, anchor: anchorOf(folded) });
     // A to-do drawn on a routine block opens its own details, not the block's.
     const chip = target.closest<HTMLElement>('[data-chip]');
     if (chip) {
@@ -165,15 +174,33 @@ export function CalendarView({ view, date, items, hasSelection, onSelect, onOpen
       const look = shadeProps(r.color, shadeFor(r));
       const time = formatTimeRange(timePart(r.start), timePart(r.end));
       const minutes = minutesBetween(r.start, r.end);
+      const todos = chips.get(r.key) ?? [];
+      const chipTop = (i: TaskItem) => `min(${(minutesBetween(r.start, combine(i.task.dueDate!, i.task.dueTime!)) / minutes) * 100}%, calc(100% - 1.5rem))`;
       return (
-        <div style={look.style} title={[r.title, 'routine', time, ...r.hidden.map((h) => `hides ${h}`)].join(' · ')} className={cx('relative h-full overflow-hidden rounded-control text-ink opacity-80', blockPadding(minutes), look.className)}>
+        <div style={look.style} title={[r.title, 'routine', time, ...r.hidden.map((h) => `hides ${h}`)].join(' · ')} className={cx('@container relative h-full overflow-hidden rounded-control text-ink opacity-80', blockPadding(minutes), look.className)}>
           <BlockText title={r.title} time={time} minutes={minutes} notes={r.hidden.length > 0 && <p className="truncate text-time italic">+{r.hidden.length} hidden: {r.hidden.join(', ')}</p>} />
-          {(chips.get(r.key) ?? []).map((i) => (
+          {todos.length === 1 && (
             // At the to-do's time, over the block, so it never splits the block's column.
-            <div key={i.id} data-chip={i.id} className="absolute right-1 left-1/4" style={{ top: `min(${(minutesBetween(r.start, combine(i.task.dueDate!, i.task.dueTime!)) / minutes) * 100}%, calc(100% - 1.5rem))` }}>
-              <TodoBlock title={i.task.title} color={i.color} calendarName={i.calendarName} done={i.task.status === 'done'} onToggle={() => void toggleTask(i.task)} className="h-6 bg-paper" />
+            <div data-chip={todos[0]!.id} className="absolute right-1 left-1" style={{ top: chipTop(todos[0]!) }}>
+              <TodoBlock title={todos[0]!.task.title} color={todos[0]!.color} calendarName={todos[0]!.calendarName} done={todos[0]!.task.status === 'done'} onToggle={() => void toggleTask(todos[0]!.task)} className="h-6 bg-paper" />
             </div>
-          ))}
+          )}
+          {todos.length > 1 && (
+            <div className="absolute right-1 left-1" style={{ top: chipTop(todos[0]!) }}>
+              <button
+                type="button"
+                data-chips={r.key}
+                title={todos.map((i) => i.task.title).join(' · ')}
+                className="flex h-6 w-full items-center justify-center gap-1 overflow-hidden rounded-control border border-dashed border-ink bg-paper px-1 text-meta font-medium text-ink transition-colors duration-150 ease-out hover:bg-accent-soft"
+              >
+                <ListChecks className="size-3.5 shrink-0 @max-[5rem]:hidden" aria-hidden />
+                <span className="truncate">
+                  +{todos.length}
+                  <span className="@max-[5rem]:hidden"> to-dos</span>
+                </span>
+              </button>
+            </div>
+          )}
         </div>
       );
     }
@@ -270,6 +297,34 @@ export function CalendarView({ view, date, items, hasSelection, onSelect, onOpen
         }}
       />
       {tip && <HeatTooltip load={tip.load} x={tip.x} y={tip.y} />}
+      {group && grouped.length > 0 && (
+        <Popover anchor={group.anchor} label="To-dos in this block" onClose={() => setGroup(null)}>
+          <div className="p-3">
+            <h3 className="mb-1 text-label text-ink-muted uppercase">To-dos in this block</h3>
+            <ul>
+              {grouped.map((i) => {
+                const done = i.task.status === 'done';
+                return (
+                  <li key={i.id} className="flex items-center gap-1">
+                    <Checkbox checked={done} onChange={() => void toggleTask(i.task)} label={`Mark "${i.task.title}" as ${done ? 'not done' : 'done'}`} />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        const anchor = anchorOf(e.currentTarget);
+                        setGroup(null);
+                        onOpenItem(i, anchor);
+                      }}
+                      className="min-w-0 flex-1 py-1.5 text-left text-body hover:underline hover:underline-offset-4"
+                    >
+                      <span className={cx(done && 'text-ink-muted line-through')}>{i.task.title}</span> <span className="font-mono text-time text-ink-muted">{formatTime(i.task.dueTime!)}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </Popover>
+      )}
     </div>
   );
 }

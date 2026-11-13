@@ -35,3 +35,4 @@ export * from './scoreboard';
 export * from './badges';
 export * from './review';
 export * from './backup';
+export * from './suggestCalendar';

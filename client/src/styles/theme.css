@@ -33,6 +33,11 @@
   --color-warning: var(--warning);
   --color-danger: var(--danger);
   --color-weekend: var(--weekend);
+  --color-rail: var(--rail);
+  --color-on-rail: var(--on-rail);
+  --color-on-rail-muted: var(--on-rail-muted);
+  --color-rail-hover: var(--rail-hover);
+  --color-rail-rule: var(--rail-rule);
   --color-toast-bg: var(--toast-bg);
   --color-toast-text: var(--toast-text);
   --color-toast-link: var(--toast-link);

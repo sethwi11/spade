@@ -5,13 +5,13 @@ import notifier from 'node-notifier';
 import type NotificationCenter from 'node-notifier/notifiers/notificationcenter';
 import type { SendPopup } from './popups';
 
-/** Where Chrome keeps a web app installed with "Install page as app". */
-const INSTALLED_APP = path.join(os.homedir(), 'Applications', 'Chrome Apps.localized', 'Planner.app');
-const installedApp = () => (fs.existsSync(INSTALLED_APP) ? INSTALLED_APP : null);
+/** Where Chrome keeps a web app installed with "Install page as app". The app was called Planner before Spade, and an install from then still works until it is replaced. */
+const APPS = path.join(os.homedir(), 'Applications', 'Chrome Apps.localized');
+const installedApp = () => ['Spade.app', 'Planner.app'].map((name) => path.join(APPS, name)).find((p) => fs.existsSync(p)) ?? null;
 
 const shellQuote = (s: string) => `'${s.replaceAll("'", `'\\''`)}'`;
 
-/** What clicking a pop-up runs: open the page in the installed Planner window (an already open one comes to the front), or in the browser when the app isn't installed. */
+/** What clicking a pop-up runs: open the page in the installed Spade window (an already open one comes to the front), or in the browser when the app isn't installed. */
 export const clickCommand = (url: string, app: string | null) => (app ? `open -a ${shellQuote(app)} ${shellQuote(url)}` : `open ${shellQuote(url)}`);
 
 /** A native macOS notification; clicking it opens the app at the pop-up's page. */

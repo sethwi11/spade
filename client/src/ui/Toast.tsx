@@ -65,7 +65,7 @@ export function ToastView({ message, onUndo, onDismiss, className, ...rest }: To
 
 const DURATION_MS = 5000;
 
-/** Shows the current toast bottom-center (above the + button on a phone, so it never covers it, and clear of the sidebar's Settings link on a desktop) and dismisses it after 5 seconds. */
+/** Shows the current toast bottom-center (above the tab bar on a phone, so it never covers it) and dismisses it after 5 seconds. */
 export function ToastHost({ toast, onDismiss }: { toast: ToastMessage | null; onDismiss: () => void }) {
   const [paused, setPaused] = useState(false);
   const timer = useRef<number | undefined>(undefined);

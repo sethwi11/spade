@@ -1,6 +1,6 @@
 {
-  "name": "Planner",
-  "short_name": "Planner",
+  "name": "Spade",
+  "short_name": "Spade",
   "description": "A personal planner for the day, the week and the long run.",
   "start_url": "/",
   "scope": "/",

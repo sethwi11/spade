@@ -60,7 +60,7 @@ case "${1:-}" in
 PLIST
     launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true
     launchctl bootstrap "$DOMAIN" "$PLIST"
-    echo "Planner is running at http://127.0.0.1:$PORT and will start at login. Logs: $LOGS/server.log"
+    echo "Spade is running at http://127.0.0.1:$PORT and will start at login. Logs: $LOGS/server.log"
     ;;
   restart)
     check_main

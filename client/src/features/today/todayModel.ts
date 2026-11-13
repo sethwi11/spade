@@ -1,3 +1,5 @@
+import type { EventDefaults, TaskDefaults } from '../../app/AppContext';
+import { newEventSpan } from '../calendar/calendarModel';
 import { addDays, addMinutes, combine, conflictMap, expandOccurrences, isOverdue, minutesBetween, soonestFirst, type DayPlan, type Event, type EventOccurrence, type PlanItem, type PlanKind, type Task, type TimeBlock } from '@todo/shared';
 
 // The logic behind the Today page, apart from any drawing.
@@ -105,6 +107,15 @@ export function openAtMinutes(plan: Pick<DayPlan, 'date' | 'wake' | 'bed' | 'ite
   const { from, to } = agendaRange(plan);
   const at = minutesInto(plan.date, now);
   return at >= from && at <= to ? at : null;
+}
+
+/** What Add task and Add event on the home screen start out as. In a block: its category, and for an event its own time (change it if you like). In open or free time, or with nothing on: no category, and the next hour. */
+export function homeDefaults(current: PlanItem | undefined, now: string, today: string): { task: TaskDefaults; event: EventDefaults } {
+  const block = current && current.kind !== 'open' && current.priority !== 'free' ? current : undefined;
+  return {
+    task: { dueDate: today, calendarId: block?.calendarId ?? undefined },
+    event: block ? { start: block.start, end: block.end, calendarId: block.calendarId } : newEventSpan(null, new Date(`${now}:00`)),
+  };
 }
 
 export const greeting = (hour: number) => (hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening');

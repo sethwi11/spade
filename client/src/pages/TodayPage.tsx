@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link } from 'react-router';
 import { addMinutes, combine, isOverdue, isRolling, isoWeekNumber, openBumps, quoteFor, type PlanItem } from '@todo/shared';
 import { useApp } from '../app/AppContext';
 import { PageHeader } from '../app/PageHeader';
@@ -43,7 +43,6 @@ export default function TodayPage() {
   const app = useApp();
   const { tasks, timeBlocks, calendarsById, today, loading, eventsLoading, error, dismissError, reload, openDialog } = app;
   const { settings } = useAppSettings();
-  const navigate = useNavigate();
   const now = useNowText();
   const [detail, setDetail] = useState<{ item: CalendarItem; anchor: PopoverAnchor } | null>(null);
   const { routine, src, date, plan, occurrences, current, next, during, supposed } = useTodayPlan(now);
@@ -170,8 +169,8 @@ export default function TodayPage() {
                       Add an event
                     </Button>
                   ) : (
-                    <Button variant="ghost" onClick={() => navigate('/week')}>
-                      Open Week
+                    <Button variant="ghost" onClick={() => openDialog({ kind: 'template', mode: 'new' })}>
+                      Set up your week
                     </Button>
                   )}
                 </EmptyState>

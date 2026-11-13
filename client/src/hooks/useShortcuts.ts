@@ -1,10 +1,12 @@
 import { useEffect, useRef } from 'react';
 
+/** Each page passes the shortcuts that make sense on it. */
 interface Handlers {
-  newTask: () => void;
-  search: () => void;
-  undo: () => void;
-  showHelp: () => void;
+  newTask?: () => void;
+  newEvent?: () => void;
+  search?: () => void;
+  undo?: () => void;
+  showHelp?: () => void;
 }
 
 /** True when the keystroke belongs to a text field, so shortcuts must stay out of the way. */
@@ -13,7 +15,7 @@ function isTyping(target: EventTarget | null): boolean {
   return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
 }
 
-/** Global keyboard shortcuts: N new task, / search, Ctrl/Cmd+Z undo, ? help. */
+/** Global keyboard shortcuts: N new task, E new event, / search, Ctrl/Cmd+Z undo, ? help. */
 export function useShortcuts(handlers: Handlers) {
   const ref = useRef(handlers);
   ref.current = handlers;
@@ -22,13 +24,13 @@ export function useShortcuts(handlers: Handlers) {
     function onKeyDown(e: KeyboardEvent) {
       const h = ref.current;
       if (isTyping(e.target) || document.querySelector('dialog[open]')) return;
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey && h.undo) {
         e.preventDefault();
         h.undo();
         return;
       }
       if (e.ctrlKey || e.metaKey || e.altKey) return;
-      const action = { n: h.newTask, N: h.newTask, '/': h.search, '?': h.showHelp }[e.key];
+      const action = { n: h.newTask, N: h.newTask, e: h.newEvent, E: h.newEvent, '/': h.search, '?': h.showHelp }[e.key];
       if (action) {
         e.preventDefault();
         action();

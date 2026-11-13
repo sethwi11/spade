@@ -7,6 +7,7 @@ import { Controls } from './styleguide/Controls';
 import { Directions } from './styleguide/Directions';
 import { Overlays } from './styleguide/Overlays';
 import { Pages } from './styleguide/Pages';
+import { Spade } from './styleguide/Spade';
 import { Tasks } from './styleguide/Tasks';
 import { Typography } from './styleguide/Type';
 
@@ -19,6 +20,7 @@ const SECTIONS = [
   ['overlays', 'Popovers & toasts'],
   ['pages', 'Pages'],
   ['directions', 'Today directions'],
+  ['spade', 'Spade mockups'],
 ];
 
 /** The style guide: every design token and every component, rendered from the real code. */
@@ -32,7 +34,7 @@ export default function StyleGuide() {
         <header className="mb-10">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="font-display text-section italic">Planner</p>
+              <p className="font-display text-section italic">Spade</p>
               <h1 className="mt-6 font-display text-page">Style guide</h1>
               <p className="mt-2 max-w-[56ch] text-body text-ink-muted">
                 Morning sky, cerulean ink and one honey accent; at night, deep cerulean with the same honey. Everything below is the real code, so what you see is what the app will use.
@@ -71,6 +73,7 @@ export default function StyleGuide() {
           <Overlays onShowToast={() => show('Deleted “Return library books”', () => {})} />
           <Pages />
           <Directions />
+          <Spade />
         </main>
       </div>
       <ToastHost toast={toast} onDismiss={dismiss} />

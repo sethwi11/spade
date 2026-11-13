@@ -1,12 +1,13 @@
 import { createContext, useContext } from 'react';
 import type { Application, Calendar, CalendarColor, Clash, Course, CreateTaskInput, Event, EventOccurrence, EventType, Semester, Span, Task, TimeBlock, UpdateCalendarInput, UpdateTaskInput } from '@todo/shared';
 import type { ApplicationActions } from '../actions/useApplicationActions';
+import type { BlockFields } from '../actions/useRoutineActions';
 import type { CourseActions } from '../actions/useCourseActions';
 import type { EventActions } from '../actions/useEventActions';
 import type { TimeBlockActions } from '../actions/useTimeBlockActions';
 
 /** Starting values for a new task, e.g. "due today" when added from the Today page. */
-export type TaskDefaults = Partial<Pick<CreateTaskInput, 'dueDate' | 'calendarId' | 'priority' | 'applicationId'>>;
+export type TaskDefaults = Partial<Pick<CreateTaskInput, 'title' | 'dueDate' | 'calendarId' | 'priority' | 'applicationId'>>;
 
 /** Starting values for a new event (e.g. the time range a person dragged out on the calendar). `end` is exclusive for an all-day event. */
 export interface EventDefaults {
@@ -42,6 +43,12 @@ export type DialogState =
   /** Set time aside to work on a to-do (or change a block's time: pass its id). */
   | { kind: 'schedule'; taskId: string; blockId?: string }
   | { kind: 'calendar'; id: string | 'new' }
+  /** The weekly routine: a block (a new one gets its day and time; an old one is found by id), a template, and copying a day to other days. */
+  | { kind: 'block'; mode: 'new'; defaults: Pick<BlockFields, 'templateId' | 'weekday' | 'start' | 'end'> }
+  | { kind: 'block'; mode: 'edit'; id: string }
+  | { kind: 'template'; mode: 'new' }
+  | { kind: 'template'; mode: 'edit' | 'duplicate'; id: string }
+  | { kind: 'copyDay'; templateId: string; weekday: number }
   | { kind: 'settings' }
   | { kind: 'shortcuts' };
 
@@ -87,6 +94,8 @@ export interface AppApi extends EventActions, CourseActions, ApplicationActions,
   saveTask: (id: string, changes: UpdateTaskInput) => Promise<Task | null>;
   removeTask: (task: Task) => Promise<void>;
   moveTask: (movedId: string, before: Task | undefined, after: Task | undefined) => void;
+  /** Put several to-dos in one calendar (or none) with one toast and one Undo. */
+  setCalendarFor: (tasks: Task[], calendarId: string | null) => Promise<void>;
   /** Add several to-dos at once with no toast of their own. Resolves to their ids and a way to undo. */
   addTasks: (inputs: CreateTaskInput[]) => Promise<{ ids: string[]; undo: () => Promise<void> }>;
   /** Find events in these files (pictures, PDFs, Word, text, calendar files) and open the review. */

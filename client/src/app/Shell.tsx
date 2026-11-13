@@ -1,46 +1,26 @@
-import { Suspense, useEffect, useState } from 'react';
-import { Outlet, useLocation, useNavigate } from 'react-router';
-import { Menu as MenuIcon } from 'lucide-react';
-import { usePersistedState } from '../hooks/usePersistedState';
+import { Suspense } from 'react';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router';
 import { useShortcuts } from '../hooks/useShortcuts';
-import { forgetFullscreen, useFullscreen, useFullscreenShortcut, wasFullscreen } from '../hooks/useFullscreen';
-import { Button } from '../ui/Button';
-import { IconButton } from '../ui/Button';
 import { BadgeAwards } from '../features/path/BadgeAwards';
-import { Drawer } from '../ui/Drawer';
+import { SpadeMark } from '../ui/SpadeMark';
 import { useApp } from './AppContext';
 import { ErrorBoundary } from './ErrorBoundary';
-import { NewMenu } from './NewMenu';
-import { SidebarContent } from './Sidebar';
+import { Rail, TabBar } from './Rail';
 
-const isBoolean = (v: unknown): v is boolean => typeof v === 'boolean';
-
-/** The frame around every page: the sidebar on the left (a 56px rail if collapsed), and the page itself on the right. */
+/** The frame around every page except the home screen: the rail on the left (a tab bar along the bottom on a phone), and the page itself. */
 export function Shell() {
   const app = useApp();
   const navigate = useNavigate();
   const location = useLocation();
-  const [collapsed, setCollapsed] = usePersistedState('voice-todo.sidebarCollapsed', false, isBoolean);
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const fullHeight = location.pathname === '/calendar' || location.pathname === '/week';
-  const fullscreen = useFullscreen();
-  useFullscreenShortcut();
-  // Launched again with an address (clicking a pop-up opens the installed window at its page): the window that's already open comes to the front and goes there.
-  useEffect(() => {
-    const queue = (window as unknown as { launchQueue?: { setConsumer(fn: (params: { targetURL?: string }) => void): void } }).launchQueue;
-    queue?.setConsumer(({ targetURL }) => {
-      const url = targetURL ? new URL(targetURL) : null;
-      if (url && url.origin === window.location.origin) navigate(url.pathname + url.search);
-    });
-  }, [navigate]);
-  // Browsers need a click to enter full screen, so a window last closed in full screen offers one.
-  const [offerFullscreen, setOfferFullscreen] = useState(wasFullscreen);
-
-  // Going anywhere closes the phone drawer.
-  useEffect(() => setDrawerOpen(false), [location.pathname, location.search]);
 
   useShortcuts({
-    newTask: () => document.getElementById('quick-add')?.focus(),
+    // The quick-add bar if this page has one (the Calendar doesn't), else the form.
+    newTask: () => {
+      const bar = document.getElementById('quick-add');
+      if (bar) bar.focus();
+      else app.openDialog({ kind: 'task', mode: 'new', defaults: {} });
+    },
     search: () => {
       const focus = () => document.getElementById('task-search')?.focus();
       if (document.getElementById('task-search')) return focus();
@@ -53,7 +33,7 @@ export function Shell() {
 
   return (
     <div className="md:flex">
-      {/* The first stop for a keyboard: skip the sidebar's many links and land on the page. */}
+      {/* The first stop for a keyboard: skip the menu's many links and land on the page. */}
       <a
         href="#main"
         onClick={(e) => {
@@ -64,17 +44,14 @@ export function Shell() {
       >
         Skip to main content
       </a>
-      <aside
-        aria-label="Sidebar"
-        className={`sticky top-0 hidden h-dvh shrink-0 border-r border-rule bg-surface transition-[width] duration-150 ease-out md:block ${collapsed ? 'w-14' : 'w-62'}`}
-      >
-        <SidebarContent collapsed={collapsed} onToggleCollapsed={() => setCollapsed(!collapsed)} />
-      </aside>
+      <Rail />
 
       <div className="min-w-0 flex-1">
-        <div className="flex h-12 items-center gap-2 border-b border-hairline px-3 md:hidden">
-          <IconButton icon={MenuIcon} label="Open menu" onClick={() => setDrawerOpen(true)} />
-          <span className="font-display text-section italic">Planner</span>
+        <div className="flex h-12 items-center border-b border-hairline px-4 md:hidden">
+          <Link to="/" aria-label="Spade home" className="flex items-center gap-2">
+            <SpadeMark className="size-6" />
+            <span className="font-display text-section italic">Spade</span>
+          </Link>
         </div>
         {/* The calendar fills the screen instead of scrolling the page: its grid scrolls inside it. */}
         <main
@@ -82,7 +59,7 @@ export function Shell() {
           tabIndex={-1}
           className={
             fullHeight
-              ? 'flex h-[calc(100dvh-3rem)] flex-col outline-none px-3 pt-3 pb-24 sm:px-5 md:h-dvh md:px-8 md:pt-6 md:pb-4'
+              ? 'flex h-[calc(100dvh-7.5rem)] flex-col px-3 pt-3 pb-2 outline-none sm:px-5 md:h-dvh md:px-8 md:pt-6 md:pb-4'
               : 'px-5 pt-6 pb-28 outline-none sm:px-8 md:px-10 md:pt-10'
           }
         >
@@ -95,26 +72,7 @@ export function Shell() {
         </main>
       </div>
 
-      {offerFullscreen && !fullscreen.on && (
-        <div role="status" className="fixed right-4 bottom-4 z-40 flex items-center gap-3 rounded-panel border border-hairline bg-surface py-2 pr-2 pl-4 text-body shadow-popover">
-          You were in full screen.
-          <Button variant="primary" onClick={() => { fullscreen.toggle(); setOfferFullscreen(false); }}>
-            Go full screen
-          </Button>
-          <Button variant="ghost" onClick={() => { forgetFullscreen(); setOfferFullscreen(false); }}>
-            Not now
-          </Button>
-        </div>
-      )}
-
-      <Drawer open={drawerOpen} onClose={() => setDrawerOpen(false)} label="Menu">
-        <SidebarContent onNavigate={() => setDrawerOpen(false)} />
-      </Drawer>
-
-      <div className="fixed right-4 bottom-4 z-30 md:hidden">
-        <NewMenu variant="fab" />
-      </div>
-
+      <TabBar />
       <BadgeAwards />
     </div>
   );

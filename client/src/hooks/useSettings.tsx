@@ -3,9 +3,11 @@ import { useTheme } from './useTheme';
 
 export interface Settings {
   theme: 'system' | 'light' | 'dark';
+  /** Week, Money, Path and Review are out of the menu unless this is on. */
+  showHiddenPages: boolean;
 }
 
-const DEFAULTS: Settings = { theme: 'system' };
+const DEFAULTS: Settings = { theme: 'system', showHiddenPages: false };
 const KEY = 'voice-todo.settings';
 
 // Settings are per-device preferences, so localStorage (not the server) is the right home.
@@ -15,7 +17,7 @@ function load(): Settings {
     if (!raw) return DEFAULTS;
     // Keep only the settings that still exist (older versions saved more, e.g. voice options and browser notifications).
     const saved = JSON.parse(raw) as Partial<Settings>;
-    return { theme: saved.theme ?? DEFAULTS.theme };
+    return { theme: saved.theme ?? DEFAULTS.theme, showHiddenPages: saved.showHiddenPages === true };
   } catch {
     return DEFAULTS;
   }

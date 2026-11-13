@@ -1,19 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { addDays, eachDate, planDay, workloadByDay, type PlanItem } from '@todo/shared';
+import { Copy, CopyPlus, Plus, Settings2 } from 'lucide-react';
+import { activeTemplate, addDays, dayOfWeek, eachDate, planDay, workloadByDay, type PlanItem } from '@todo/shared';
 import { DayChangeDialog } from '../features/today/DayChangeDialog';
 import { usePlanSources } from '../features/today/useTodayPlan';
 import { weekStart } from '../features/calendar/calendarModel';
 import { useApp } from '../app/AppContext';
 import { AgendaView } from '../features/calendar/AgendaView';
-import { attachChips, buildItems, calendarUrl, dataRange, isCalendarView, parseCalendarQuery, shiftDate, viewTitle, type CalendarItem, type CalendarViewId } from '../features/calendar/calendarModel';
+import { attachChips, buildItems, calendarUrl, dataRange, isCalendarView, newEventSpan, parseCalendarQuery, shiftDate, viewTitle, type CalendarItem, type CalendarViewId } from '../features/calendar/calendarModel';
 import { CalendarHeader, type Layers } from '../features/calendar/CalendarHeader';
 import { CalendarView } from '../features/calendar/CalendarView';
 import { ItemDetail } from '../features/calendar/ItemDetail';
 import { HeatLegend } from '../features/calendar/HeatLegend';
 import { QuickCreate, type Selection } from '../features/calendar/QuickCreate';
 import { SchedulePanel } from '../features/calendar/SchedulePanel';
+import { ClashNotices } from '../features/week/ClashNotices';
 import { usePersistedState } from '../hooks/usePersistedState';
+import type { MenuItem } from '../ui/Menu';
 import type { PopoverAnchor } from '../ui/Popover';
 import { ErrorBanner } from '../ui/states';
 
@@ -31,7 +34,7 @@ const firstView = (): CalendarViewId => (typeof matchMedia === 'function' && mat
 export default function CalendarPage() {
   const app = useApp();
   const { events, tasks, timeBlocks, calendarsById, hiddenCalendarIds, today } = app;
-  const { src } = usePlanSources();
+  const { src, routine: routineData } = usePlanSources();
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const query = parseCalendarQuery(params, today);
@@ -83,6 +86,19 @@ export default function CalendarPage() {
     navigate(calendarUrl({ view: nextView, date: next.date ?? date }));
   }
 
+  // The routine is edited here too: the template in effect on the day you're looking at.
+  const template = activeTemplate(routineData.templates, date) ?? routineData.templates[0];
+  const routineItems: MenuItem[] = [
+    {
+      label: 'New routine block…',
+      icon: Plus,
+      onSelect: () => app.openDialog(template ? { kind: 'block', mode: 'new', defaults: { templateId: template.id, weekday: dayOfWeek(date), start: '09:00', end: '10:00' } } : { kind: 'template', mode: 'new' }),
+    },
+    { label: template ? 'Week template…' : 'New week template…', icon: Settings2, onSelect: () => app.openDialog(template ? { kind: 'template', mode: 'edit', id: template.id } : { kind: 'template', mode: 'new' }) },
+    { label: 'Duplicate for a new semester…', icon: CopyPlus, disabled: !template, onSelect: () => template && app.openDialog({ kind: 'template', mode: 'duplicate', id: template.id }) },
+    { label: 'Copy a day to other days…', icon: Copy, disabled: !template, onSelect: () => template && app.openDialog({ kind: 'copyDay', templateId: template.id, weekday: dayOfWeek(date) }) },
+  ];
+
   function newEventHere() {
     const start = `${date}T09:00`;
     app.openDialog({ kind: 'event', mode: 'new', defaults: { start, end: `${date}T10:00` } });
@@ -99,7 +115,8 @@ export default function CalendarPage() {
         onPrev={() => go({ date: shiftDate(view, date, -1) })}
         onNext={() => go({ date: shiftDate(view, date, 1) })}
         onLayers={setLayers}
-        onImport={app.chooseFilesToImport}
+        onAddEvent={() => app.openDialog({ kind: 'event', mode: 'new', defaults: newEventSpan(date, new Date()) })}
+        routineItems={routineItems}
         heat={heat}
         onHeat={setHeat}
         panel={panel}
@@ -110,6 +127,8 @@ export default function CalendarPage() {
           <HeatLegend />
         </div>
       )}
+
+      {layers.routine && (view === 'week' || view === 'day') && <ClashNotices template={template} />}
 
       {app.error && <ErrorBanner message={app.error} onRetry={() => void app.reload()} onDismiss={app.dismissError} />}
 

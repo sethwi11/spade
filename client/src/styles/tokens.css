@@ -43,6 +43,11 @@
   /* Toast link (the toast itself is inverted: see the shared block at the bottom). */
   --toast-link: #f0c83c;
 
+  /* The icon rail: the same deep cerulean in both modes, sky-white labels, honey for where you are. */
+  --rail: #00303f;
+  --on-rail: #e8f3ef;
+  --on-rail-muted: #a9c6bf;
+
   /* Calendar colors: the "highlighter" palette. */
   --cal-dusty-blue: #5a7ba6;
   --cal-slate: #4a4f57;
@@ -125,6 +130,9 @@
 .light,
 .dark {
   --weekend: color-mix(in srgb, var(--ink) 3%, var(--paper));
+  /* The rail's hover wash and its dividers. */
+  --rail-hover: color-mix(in srgb, var(--on-rail) 10%, var(--rail));
+  --rail-rule: color-mix(in srgb, var(--on-rail) 16%, var(--rail));
   /* Toast: inverted (light text on dark, or dark text on light). */
   --toast-bg: var(--ink);
   --toast-text: var(--paper);

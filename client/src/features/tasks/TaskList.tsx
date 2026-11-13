@@ -49,9 +49,11 @@ interface TaskListProps {
   draggable?: boolean;
   /** Play the full completion animation, for lists where a finished task leaves the list. */
   leaveOnComplete?: boolean;
+  /** Choosing several to-dos at once: which are picked, and how to pick or drop one. */
+  select?: { picked: ReadonlySet<string>; onToggle: (id: string) => void };
 }
 
-export function TaskList({ tasks, label, draggable = false, leaveOnComplete = false }: TaskListProps) {
+export function TaskList({ tasks, label, draggable = false, leaveOnComplete = false, select }: TaskListProps) {
   const { moveTask } = useApp();
   const rowProps = useRowProps();
 
@@ -95,7 +97,7 @@ export function TaskList({ tasks, label, draggable = false, leaveOnComplete = fa
   return (
     <ul aria-label={label} className="border-t border-hairline">
       {tasks.map((task) => (
-        <TaskRow key={task.id} {...rowProps(task)} leaveOnComplete={leaveOnComplete && task.status === 'todo'} />
+        <TaskRow key={task.id} {...rowProps(task)} leaveOnComplete={leaveOnComplete && task.status === 'todo'} select={select && { picked: select.picked.has(task.id), onToggle: () => select.onToggle(task.id) }} />
       ))}
     </ul>
   );

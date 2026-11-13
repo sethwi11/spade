@@ -1,4 +1,4 @@
-import { LocalDateSchema } from '@todo/shared';
+import { LocalDateSchema, type Task } from '@todo/shared';
 
 // What the Tasks page is showing lives in the URL (/tasks?view=overdue&calendar=...), not in component state.
 
@@ -11,9 +11,15 @@ export const TASK_TABS = [
 
 export type TaskTab = (typeof TASK_TABS)[number]['id'];
 
+/** The `calendar` value that means "to-dos with no calendar". */
+export const UNCATEGORIZED = 'none';
+
+/** Whether a to-do belongs to what `?calendar=` asks for. */
+export const inCalendar = (task: Pick<Task, 'calendarId'>, calendarId: string) => (calendarId === UNCATEGORIZED ? task.calendarId === null : task.calendarId === calendarId);
+
 export interface TasksQuery {
   tab: TaskTab;
-  /** Only tasks in this calendar. */
+  /** Only tasks in this calendar, or UNCATEGORIZED. */
   calendarId: string | null;
   /** Only tasks due on this date ("YYYY-MM-DD"). */
   date: string | null;

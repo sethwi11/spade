@@ -1,23 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
+import { clock } from './clock';
 
-/** Milliseconds from `now` until the clock next shows a new minute (0 seconds). */
-export function msUntilNextMinute(now: Date): number {
-  return 60_000 - (now.getSeconds() * 1000 + now.getMilliseconds());
-}
-
-/** The current time, refreshed each time the clock turns over a minute. */
-export function useNow(): Date {
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    let timer: number;
-    const schedule = () => {
-      timer = window.setTimeout(() => {
-        setNow(new Date());
-        schedule();
-      }, msUntilNextMinute(new Date()) + 50); // a hair after the minute, so we never land just before it
-    };
-    schedule();
-    return () => window.clearTimeout(timer);
-  }, []);
-  return now;
-}
+/** The current time, refreshed each minute and the moment the window wakes. */
+export const useNow = (): Date => useSyncExternalStore(clock.subscribe, clock.get);
