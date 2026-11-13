@@ -39,6 +39,7 @@
   --color-on-rail: var(--on-rail);
   --color-on-rail-muted: var(--on-rail-muted);
   --color-rail-hover: var(--rail-hover);
+  --color-rail-lift: var(--rail-lift);
   --color-rail-rule: var(--rail-rule);
   --color-toast-bg: var(--toast-bg);
   --color-toast-text: var(--toast-text);

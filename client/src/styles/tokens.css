@@ -141,8 +141,9 @@
   --weekend: color-mix(in srgb, var(--ink) 3%, var(--paper));
   /* A board column's well: the page, one step toward ink. */
   --well: color-mix(in srgb, var(--ink) 4%, var(--paper));
-  /* The rail's hover wash and its dividers. */
+  /* The rail's hover wash, the lighter top of its gradient, and its dividers. */
   --rail-hover: color-mix(in srgb, var(--on-rail) 10%, var(--rail));
+  --rail-lift: color-mix(in srgb, var(--rail), var(--on-rail) 8%);
   --rail-rule: color-mix(in srgb, var(--on-rail) 16%, var(--rail));
   /* Toast: inverted (light text on dark, or dark text on light). */
   --toast-bg: var(--ink);
