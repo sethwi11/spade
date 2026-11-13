@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router';
 import { useShortcuts } from '../hooks/useShortcuts';
+import { cx } from '../lib/cx';
 import { BadgeAwards } from '../features/path/BadgeAwards';
 import { SpadeMark } from '../ui/SpadeMark';
 import { useApp } from './AppContext';
@@ -13,6 +14,8 @@ export function Shell() {
   const navigate = useNavigate();
   const location = useLocation();
   const fullHeight = location.pathname === '/calendar' || location.pathname === '/week';
+  // The boards fill the window on a wide screen, so each column scrolls by itself instead of the page.
+  const boardPage = location.pathname === '/tasks' || location.pathname === '/applications';
 
   useShortcuts({
     // The quick-add bar if this page has one (the Calendar doesn't), else the form.
@@ -60,7 +63,7 @@ export function Shell() {
           className={
             fullHeight
               ? 'flex h-[calc(100dvh-7.5rem)] flex-col px-3 pt-3 pb-2 outline-none sm:px-5 md:h-dvh md:px-8 md:pt-6 md:pb-4'
-              : 'px-5 pt-6 pb-28 outline-none sm:px-8 md:px-10 md:pt-10'
+              : cx('px-5 pt-6 pb-28 outline-none sm:px-8 md:px-10 md:pt-10', boardPage && 'md:flex md:h-dvh md:flex-col md:overflow-hidden md:pt-8 md:pb-6')
           }
         >
           {/* Keyed by address, so leaving a page that crashed clears the message. */}

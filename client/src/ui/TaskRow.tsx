@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState, type CSSProperties, type HTMLAttributes, type Ref } from 'react';
+import type { CSSProperties, HTMLAttributes, Ref } from 'react';
 import { CalendarClock, CalendarPlus, CircleAlert, GripVertical, ListChecks, Pencil, Timer } from 'lucide-react';
 import type { CalendarColor, Priority } from '@todo/shared';
 import { calendarVars } from '../lib/calendarColors';
 import { cx } from '../lib/cx';
 import { Checkbox } from './Checkbox';
 import { IconButton } from './Button';
-import { useReducedMotion } from './useReducedMotion';
+import { useLeave } from './useLeave';
 
 export interface TaskRowProps {
   title: string;
@@ -41,17 +41,13 @@ export interface TaskRowProps {
   select?: { picked: boolean; onToggle: () => void };
 }
 
-// The sequence, from the click: the line draws for 250ms; at 400ms the row starts to fade and collapse (250ms); when that finishes, the change is committed and the list drops the row.
-const COLLAPSE_AFTER_MS = 400;
-const COLLAPSE_MS = 250;
-
 const PRIORITY_BAR: Record<Priority, string | null> = {
   // High is the full height of the row and medium is half of it, so the two differ by shape, not only by color (the bars are honey and ochre).
   high: 'inset-y-0 bg-accent',
   medium: 'inset-y-[25%] bg-warning',
   low: null,
 };
-const PRIORITY_LABEL: Record<Priority, string> = { high: 'High priority', medium: 'Medium priority', low: 'Low priority' };
+export const PRIORITY_LABEL: Record<Priority, string> = { high: 'High priority', medium: 'Medium priority', low: 'Low priority' };
 
 export function TaskRow({
   title,
@@ -76,55 +72,7 @@ export function TaskRow({
   now = false,
   select,
 }: TaskRowProps) {
-  const reduced = useReducedMotion();
-  const [leaving, setLeaving] = useState<'idle' | 'striking' | 'collapsing'>('idle');
-  const timers = useRef<number[]>([]);
-  const commit = useRef(onToggle);
-  commit.current = onToggle;
-  const phase = useRef(leaving);
-  phase.current = leaving;
-
-  const clearTimers = () => {
-    timers.current.forEach((t) => window.clearTimeout(t));
-    timers.current = [];
-  };
-
-  // If the row is removed mid-animation, still save the change the person asked for.
-  useEffect(
-    () => () => {
-      clearTimers();
-      if (phase.current !== 'idle') commit.current();
-    },
-    [],
-  );
-  // A task that becomes un-done again (e.g. via Undo) starts fresh.
-  useEffect(() => {
-    if (!done) setLeaving('idle');
-  }, [done]);
-
-  function handleToggle() {
-    if (!leaveOnComplete || done || reduced) {
-      onToggle();
-      return;
-    }
-    if (leaving === 'striking') {
-      // Changed their mind before the row started to leave: cancel.
-      clearTimers();
-      setLeaving('idle');
-      return;
-    }
-    if (leaving !== 'idle') return;
-    setLeaving('striking');
-    timers.current = [
-      window.setTimeout(() => setLeaving('collapsing'), COLLAPSE_AFTER_MS),
-      window.setTimeout(() => {
-        phase.current = 'idle'; // committed: the unmount cleanup must not commit again
-        commit.current();
-      }, COLLAPSE_AFTER_MS + COLLAPSE_MS),
-    ];
-  }
-
-  const checked = done || leaving !== 'idle';
+  const { leaving, checked, toggle: handleToggle } = useLeave(done, leaveOnComplete, onToggle);
   const bar = PRIORITY_BAR[priority];
   const showMeta = dueLabel || calendar || subtasks || focusMinutes || scheduledLabel;
 

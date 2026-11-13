@@ -12,7 +12,7 @@ import type { SqliteAttachmentRepository } from '../repositories/SqliteAttachmen
 const OwnerSchema = z.object({ ownerType: AttachmentOwnerTypeSchema, ownerId: z.uuid() });
 const supportedList = Object.keys(FILE_KINDS).map((e) => `.${e}`).join(', ');
 
-/** Files: upload (multipart field "file"), list an item's files, serve the bytes, link or unlink an item, delete. */
+/** Files: upload (multipart field "file"), list an item's files (or count every item's), serve the bytes, link or unlink an item, delete. */
 export function attachmentsRouter(repo: SqliteAttachmentRepository, uploadsDir: string): Router {
   const router = Router();
   fs.mkdirSync(uploadsDir, { recursive: true });
@@ -62,6 +62,12 @@ export function attachmentsRouter(repo: SqliteAttachmentRepository, uploadsDir: 
     const owner = OwnerSchema.safeParse(req.query);
     if (!owner.success) throw new HttpError(400, 'Say which item with ownerType and ownerId');
     res.json(repo.listForOwner(owner.data.ownerType, owner.data.ownerId));
+  });
+
+  router.get('/counts', (req, res) => {
+    const type = AttachmentOwnerTypeSchema.safeParse(req.query.ownerType);
+    if (!type.success) throw new HttpError(400, 'Say which kind of item with ownerType');
+    res.json(repo.countsByOwner(type.data));
   });
 
   router.get('/:id/file', (req, res) => {

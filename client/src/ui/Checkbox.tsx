@@ -9,11 +9,13 @@ interface CheckboxProps {
   label: string;
   /** md = 16px (task rows); sm = 12px (inside calendar blocks). */
   size?: 'md' | 'sm';
+  /** A circle, as on a board card. */
+  round?: boolean;
   className?: string;
 }
 
-/** A square checkbox: 16px, 1.5px ink border, 3px corners; fills with ink and shows a check when on. */
-export function Checkbox({ checked, onChange, label, size = 'md', className }: CheckboxProps) {
+/** A square checkbox: 16px, 1.5px ink border, 3px corners; fills with ink and shows a check when on. `round` makes it an 18px circle. */
+export function Checkbox({ checked, onChange, label, size = 'md', round = false, className }: CheckboxProps) {
   const md = size === 'md';
   return (
     <span className={cx('relative inline-grid shrink-0 place-items-center', md ? 'size-8' : 'size-5', className)}>
@@ -29,7 +31,7 @@ export function Checkbox({ checked, onChange, label, size = 'md', className }: C
         className={cx(
           // pointer-events-none: the check icon (opacity 0 makes it a stacking context) would otherwise paint over the input and swallow clicks.
           'pointer-events-none grid place-items-center border-[1.5px] border-ink transition-colors duration-150 ease-out peer-checked:bg-ink peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent peer-checked:[&_svg]:opacity-100',
-          md ? 'size-4 rounded-[3px]' : 'size-3 rounded-[2px]',
+          round ? 'size-[18px] rounded-full' : md ? 'size-4 rounded-[3px]' : 'size-3 rounded-[2px]',
         )}
       >
         <Check className={cx('text-paper opacity-0 transition-opacity duration-150', md ? 'size-3' : 'size-2.5')} strokeWidth={2.5} />

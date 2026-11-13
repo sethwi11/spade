@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { cx } from '../lib/cx';
 
@@ -27,11 +27,14 @@ interface MenuProps {
   /** Open below (default) or above the trigger. */
   side?: 'bottom' | 'top';
   className?: string;
+  /** Position the menu on the screen instead of inside its parent, so a scrolling column can't clip it. It closes when anything scrolls. */
+  fixed?: boolean;
 }
 
 /** A dropdown menu with the usual keyboard behavior (Enter/Space/ArrowDown open it; arrows, Home, End move; Escape closes and refocuses the button). */
-export function Menu({ trigger, items, align = 'start', side = 'bottom', className }: MenuProps) {
+export function Menu({ trigger, items, align = 'start', side = 'bottom', className, fixed = false }: MenuProps) {
   const [open, setOpen] = useState(false);
+  const [spot, setSpot] = useState<CSSProperties>({});
   const id = useId();
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -48,6 +51,18 @@ export function Menu({ trigger, items, align = 'start', side = 'bottom', classNa
     document.addEventListener('pointerdown', onPress);
     return () => document.removeEventListener('pointerdown', onPress);
   }, [open]);
+
+  // A fixed menu is placed from its button when it opens, so anything that scrolls or resizes closes it.
+  useEffect(() => {
+    if (!open || !fixed) return;
+    const close = () => setOpen(false);
+    window.addEventListener('scroll', close, true);
+    window.addEventListener('resize', close);
+    return () => {
+      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('resize', close);
+    };
+  }, [open, fixed]);
 
   // Move focus into the menu when it opens.
   useEffect(() => {
@@ -82,7 +97,14 @@ export function Menu({ trigger, items, align = 'start', side = 'bottom', classNa
         ref: (el) => {
           triggerRef.current = el;
         },
-        onClick: () => setOpen((o) => !o),
+        onClick: () => {
+          if (fixed && !open && triggerRef.current) {
+            const r = triggerRef.current.getBoundingClientRect();
+            const below = window.innerHeight - r.bottom > 260; // room for about eight items
+            setSpot({ ...(below ? { top: r.bottom + 4 } : { bottom: window.innerHeight - r.top + 4 }), ...(align === 'end' ? { right: window.innerWidth - r.right } : { left: r.left }) });
+          }
+          setOpen((o) => !o);
+        },
         'aria-haspopup': 'menu',
         'aria-expanded': open,
         'aria-controls': open ? id : undefined,
@@ -99,10 +121,10 @@ export function Menu({ trigger, items, align = 'start', side = 'bottom', classNa
           id={id}
           role="menu"
           onKeyDown={onMenuKeyDown}
+          style={fixed ? spot : undefined}
           className={cx(
-            'absolute z-40 min-w-52 animate-pop rounded-panel border border-hairline bg-surface p-1 shadow-popover',
-            side === 'bottom' ? 'top-full mt-1' : 'bottom-full mb-1',
-            align === 'start' ? 'left-0' : 'right-0',
+            'z-40 min-w-52 animate-pop rounded-panel border border-hairline bg-surface p-1 shadow-popover',
+            fixed ? 'fixed' : cx('absolute', side === 'bottom' ? 'top-full mt-1' : 'bottom-full mb-1', align === 'start' ? 'left-0' : 'right-0'),
           )}
         >
           {items.map((item) => (

@@ -150,10 +150,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   const rescheduleTask = useCallback(
-    async (task: Task, when: { dueDate: string; dueTime: string | null }) => {
+    async (task: Task, when: { dueDate: string | null; dueTime: string | null }) => {
       const previous = { dueDate: task.dueDate, dueTime: task.dueTime };
       if (!(await updateTask(task.id, when))) return false;
-      showToast(`Moved “${task.title}” to ${formatDueDate(when.dueDate, today)}`, () => void updateTask(task.id, previous));
+      showToast(when.dueDate ? `Moved “${task.title}” to ${formatDueDate(when.dueDate, today)}` : `Cleared the date on “${task.title}”`, () => void updateTask(task.id, previous));
       return true;
     },
     [updateTask, showToast, today],

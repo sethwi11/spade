@@ -17,6 +17,8 @@ export const attachmentsApi = {
     body.append('file', file, file.name);
     return apiFetch<Attachment>('/attachments', { method: 'POST', body });
   },
+  /** How many files each item of one kind has (items with none are left out). */
+  counts: (ownerType: AttachmentOwnerType) => apiFetch<Record<string, number>>(`/attachments/counts?ownerType=${ownerType}`),
   forOwner: ({ ownerType, ownerId }: Owner) => apiFetch<AttachmentWithUse[]>(`/attachments?ownerType=${ownerType}&ownerId=${ownerId}`),
   link: (id: string, owner: Owner) => apiFetch<void>(`/attachments/${id}/links`, { method: 'POST', body: JSON.stringify(owner) }),
   unlink: (id: string, { ownerType, ownerId }: Owner) => apiFetch<void>(`/attachments/${id}/links/${ownerType}/${ownerId}`, { method: 'DELETE' }),

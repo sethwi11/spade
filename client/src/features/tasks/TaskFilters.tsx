@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Search, SlidersHorizontal, X } from 'lucide-react';
 import { PRIORITIES, type Calendar } from '@todo/shared';
 import { DEFAULT_FILTERS, SORT_MODES, type Filters, type SortMode } from '../../lib/filters';
@@ -14,10 +14,13 @@ interface Props {
   /** Hide filters that the page already decides (the calendar filter when viewing one calendar). */
   hideCalendar?: boolean;
   hideStatus?: boolean;
+  /** More controls on the same row: `before` sits between Filters and Sort, `children` after Sort. */
+  before?: ReactNode;
+  children?: ReactNode;
 }
 
 /** Search is always visible; the other filters sit behind one "Filters" button (with a count of the active ones), because they're used occasionally and four always-open menus are noise. */
-export function TaskFilters({ filters, onChange, sortMode, onSortChange, calendars, hideCalendar, hideStatus }: Props) {
+export function TaskFilters({ filters, onChange, sortMode, onSortChange, calendars, hideCalendar, hideStatus, before, children }: Props) {
   const [open, setOpen] = useState(false);
   const set = <K extends keyof Filters>(key: K, value: Filters[K]) => onChange({ ...filters, [key]: value });
   const active = (['priority', 'calendarId', 'status', 'due'] as const).filter((k) => filters[k] !== DEFAULT_FILTERS[k]).length;
@@ -25,8 +28,8 @@ export function TaskFilters({ filters, onChange, sortMode, onSortChange, calenda
 
   return (
     <div className="space-y-3">
-      <div role="search" className="flex flex-wrap items-center gap-3">
-        <div className="relative min-w-48 flex-1 sm:max-w-xs">
+      <div role="search" className="flex flex-wrap items-center gap-2">
+        <div className="relative min-w-48 flex-1 sm:w-48 sm:flex-none">
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-muted" aria-hidden />
           <Input id="task-search" type="search" aria-label="Search tasks" placeholder="Search" value={filters.query} onChange={(e) => set('query', e.target.value)} className="pl-9" />
         </div>
@@ -34,13 +37,15 @@ export function TaskFilters({ filters, onChange, sortMode, onSortChange, calenda
           Filters
           {active > 0 && <span className="font-mono text-meta">{active}</span>}
         </Button>
-        <Select aria-label="Sort by" value={sortMode} onChange={(e) => onSortChange(e.target.value as SortMode)} wrapperClassName="ml-auto w-44">
+        {before}
+        <Select aria-label="Sort by" value={sortMode} onChange={(e) => onSortChange(e.target.value as SortMode)} wrapperClassName="w-44">
           {SORT_MODES.map((m) => (
             <option key={m.id} value={m.id}>
               Sort: {m.label}
             </option>
           ))}
         </Select>
+        {children}
       </div>
 
       {showPanel && (

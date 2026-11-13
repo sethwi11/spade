@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
+import type { AttachmentOwnerType } from '@todo/shared';
 import { attachmentsApi, type AttachmentWithUse, type Owner } from '../../api/attachments';
 import { fileProblem } from '../../lib/files/fileTypes';
 
@@ -13,6 +14,11 @@ export function useOwnerAttachments(owner: Owner | null) {
     enabled: owner !== null,
     staleTime: 10_000,
   });
+}
+
+/** How many files each item of one kind has, for the paperclip on a board card. */
+export function useAttachmentCounts(ownerType: AttachmentOwnerType) {
+  return useQuery({ queryKey: ['attachments', ownerType, 'counts'], queryFn: () => attachmentsApi.counts(ownerType), staleTime: 10_000 }).data;
 }
 
 /** Upload files and attach them to an item. Resolves to the problems found (one message per file that failed). */
@@ -43,5 +49,8 @@ export async function detach(file: AttachmentWithUse, owner: Owner): Promise<voi
 /** Tell the cache that an item's files changed. */
 export function useRefreshAttachments() {
   const qc = useQueryClient();
-  return useCallback((owner: Owner) => qc.invalidateQueries({ queryKey: attachmentsKey(owner) }), [qc]);
+  return useCallback(
+    (owner: Owner) => Promise.all([qc.invalidateQueries({ queryKey: attachmentsKey(owner) }), qc.invalidateQueries({ queryKey: ['attachments', owner.ownerType, 'counts'] })]),
+    [qc],
+  );
 }

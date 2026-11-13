@@ -102,8 +102,8 @@ export interface AppApi extends EventActions, CourseActions, ApplicationActions,
   startImport: (files: File[], options?: ImportOptions) => void;
   /** Open the file picker for the same. */
   chooseFilesToImport: (options?: ImportOptions) => void;
-  /** Change a task's due date (and time), e.g. by dragging it on the calendar. Shows an Undo toast. */
-  rescheduleTask: (task: Task, when: { dueDate: string; dueTime: string | null }) => Promise<boolean>;
+  /** Change a task's due date (and time), e.g. by dragging it on the calendar or a board; a null date clears it. Shows an Undo toast. */
+  rescheduleTask: (task: Task, when: { dueDate: string | null; dueTime: string | null }) => Promise<boolean>;
 
   // ---- calendar actions ----
   createCalendar: (name: string, color: CalendarColor) => Promise<Calendar | null>;

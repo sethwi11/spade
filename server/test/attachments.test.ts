@@ -114,6 +114,22 @@ describe('attaching files to items', () => {
     expect((await api().get(`/api/attachments?ownerType=task&ownerId=${task.id}`)).body[0].linkCount).toBe(1);
   });
 
+  it('counts the files on every item of one kind in one request', async () => {
+    const a = await makeTask('a');
+    const b = await makeTask('b');
+    await makeTask('none');
+    const event = await makeEvent();
+    const one = (await upload(PDF, 'one.pdf')).body;
+    const two = (await upload(ZIP, 'two.docx')).body;
+    for (const [file, owner] of [[one, a], [two, a], [one, b]] as const) await api().post(`/api/attachments/${file.id}/links`).send({ ownerType: 'task', ownerId: owner.id });
+    await api().post(`/api/attachments/${one.id}/links`).send({ ownerType: 'event', ownerId: event.id });
+    expect((await api().get('/api/attachments/counts?ownerType=task').expect(200)).body).toEqual({ [a.id]: 2, [b.id]: 1 });
+    expect((await api().get('/api/attachments/counts?ownerType=event').expect(200)).body).toEqual({ [event.id]: 1 });
+    expect((await api().get('/api/attachments/counts?ownerType=application').expect(200)).body).toEqual({});
+    await api().get('/api/attachments/counts?ownerType=planet').expect(400);
+    await api().get('/api/attachments/counts').expect(400);
+  });
+
   it('will not attach to an item that does not exist, or with a bad owner', async () => {
     const file = (await upload(PDF, 'a.pdf')).body;
     await api().post(`/api/attachments/${file.id}/links`).send({ ownerType: 'task', ownerId: '9b3e4f0a-1c2d-4e5f-8a9b-0c1d2e3f4a5b' }).expect(404);

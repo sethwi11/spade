@@ -48,6 +48,12 @@ export class SqliteAttachmentRepository {
     return rows.map((r) => ({ ...toAttachment(r), linkCount: r.link_count ?? 1 }));
   }
 
+  /** How many files each item of one kind has, in one query (for the counts on board cards). Items with none aren't listed. */
+  countsByOwner(ownerType: AttachmentOwnerType): Record<string, number> {
+    const rows = this.db.prepare('SELECT owner_id, COUNT(*) AS n FROM attachment_links WHERE owner_type = ? GROUP BY owner_id').all(ownerType) as { owner_id: string; n: number }[];
+    return Object.fromEntries(rows.map((r) => [r.owner_id, r.n]));
+  }
+
   /** Attach a file to an item. Doing it twice is harmless. */
   link(attachmentId: string, ownerType: AttachmentOwnerType, ownerId: string): void {
     if (!this.get(attachmentId)) throw new HttpError(404, 'That file does not exist');
