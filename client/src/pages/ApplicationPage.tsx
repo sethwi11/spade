@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { CalendarPlus, ChevronLeft, ExternalLink, ListPlus, Mail, MapPin, Pencil } from 'lucide-react';
-import { addDays, APPLICATION_STATUSES, appliedDate, expandOccurrences, followUpSuggestions, INTERVIEW_EVENT_TYPE, localDateOf, type ApplicationStatus } from '@todo/shared';
+import { addDays, APPLICATION_STATUSES, appliedDate, expandOccurrences, followUpSuggestions, localDateOf, type ApplicationStatus } from '@todo/shared';
 import { useApp } from '../app/AppContext';
 import { PageHeader } from '../app/PageHeader';
 import { ago, hostOf } from '../features/applications/format';
 import { longDate } from '../lib/dates';
 import { StatusTimeline } from '../features/applications/StatusTimeline';
-import { newEventSpan, toEventItem, type CalendarItem } from '../features/calendar/calendarModel';
+import { useApplicationShortcuts } from '../features/applications/useApplicationShortcuts';
+import { toEventItem, type CalendarItem } from '../features/calendar/calendarModel';
 import { formatWhen } from '../features/calendar/format';
 import { ItemDetail } from '../features/calendar/ItemDetail';
 import { AttachmentList } from '../features/attachments/AttachmentList';
@@ -25,12 +26,10 @@ const PAST_EVENTS_SHOWN = 5;
 export default function ApplicationPage() {
   const { id } = useParams();
   const app = useApp();
-  const { applications, applicationsLoading, events, eventTypes, tasks, calendars, calendarsById, today, openDialog } = app;
+  const { applications, applicationsLoading, events, tasks, calendarsById, today, openDialog } = app;
+  const { appsCalendar, addInterview, addTodo } = useApplicationShortcuts();
   const application = applications.find((a) => a.id === id);
   const [detail, setDetail] = useState<{ item: CalendarItem; anchor: PopoverAnchor } | null>(null);
-
-  const appsCalendar = calendars.find((c) => c.name.toLowerCase() === 'applications');
-  const interviewTypeId = eventTypes.find((t) => t.name.toLowerCase() === INTERVIEW_EVENT_TYPE.toLowerCase())?.id ?? null;
 
   const { upcoming, past } = useMemo(() => {
     const mine = events.filter((e) => e.applicationId === id);
@@ -61,13 +60,6 @@ export default function ApplicationPage() {
   }
 
   const applied = appliedDate(application);
-  const addInterview = () =>
-    openDialog({
-      kind: 'event',
-      mode: 'new',
-      defaults: { ...newEventSpan(null, new Date()), title: `${application.company} interview`, typeId: interviewTypeId, applicationId: application.id, calendarId: appsCalendar?.id ?? null },
-    });
-
   return (
     <div className="max-w-[960px]">
       <Link to="/applications" className="mb-3 inline-flex items-center gap-1 text-meta text-ink-muted hover:text-ink">
@@ -88,10 +80,10 @@ export default function ApplicationPage() {
         <Button variant="secondary" icon={Pencil} onClick={() => openDialog({ kind: 'application', id: application.id })}>
           Edit
         </Button>
-        <Button variant="secondary" icon={CalendarPlus} onClick={addInterview}>
+        <Button variant="secondary" icon={CalendarPlus} onClick={() => addInterview(application)}>
           Add interview
         </Button>
-        <Button variant="secondary" icon={ListPlus} onClick={() => openDialog({ kind: 'task', mode: 'new', defaults: { applicationId: application.id, calendarId: appsCalendar?.id ?? null } })}>
+        <Button variant="secondary" icon={ListPlus} onClick={() => addTodo(application)}>
           Add to-do
         </Button>
       </div>
@@ -168,7 +160,7 @@ export default function ApplicationPage() {
         </SectionLabel>
         {upcoming.length === 0 ? (
           <EmptyState message="Nothing scheduled." className="py-4">
-            <Button variant="ghost" onClick={addInterview}>
+            <Button variant="ghost" onClick={() => addInterview(application)}>
               Add an interview
             </Button>
           </EmptyState>
@@ -191,7 +183,7 @@ export default function ApplicationPage() {
           <TaskList tasks={open} label={`To-dos for ${application.company}`} leaveOnComplete />
         ) : (
           <EmptyState message="Nothing to do for this application." className="py-4">
-            <Button variant="ghost" onClick={() => openDialog({ kind: 'task', mode: 'new', defaults: { applicationId: application.id, calendarId: appsCalendar?.id ?? null } })}>
+            <Button variant="ghost" onClick={() => addTodo(application)}>
               Add a to-do
             </Button>
           </EmptyState>

@@ -100,7 +100,7 @@ export function Menu({ trigger, items, align = 'start', side = 'bottom', classNa
         onClick: () => {
           if (fixed && !open && triggerRef.current) {
             const r = triggerRef.current.getBoundingClientRect();
-            const below = window.innerHeight - r.bottom > 260; // room for about eight items
+            const below = window.innerHeight - r.bottom > items.length * 32 + 24; // room for every item
             setSpot({ ...(below ? { top: r.bottom + 4 } : { bottom: window.innerHeight - r.top + 4 }), ...(align === 'end' ? { right: window.innerWidth - r.right } : { left: r.left }) });
           }
           setOpen((o) => !o);

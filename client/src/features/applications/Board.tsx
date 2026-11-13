@@ -1,154 +1,97 @@
-import { useMemo, useState } from 'react';
-import {
-  DndContext,
-  DragOverlay,
-  KeyboardSensor,
-  PointerSensor,
-  TouchSensor,
-  closestCorners,
-  useDroppable,
-  useSensor,
-  useSensors,
-  type Announcements,
-  type DragEndEvent,
-  type UniqueIdentifier,
-} from '@dnd-kit/core';
-import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { GripVertical } from 'lucide-react';
-import { APPLICATION_STATUSES, type Application, type ApplicationStatus, type CalendarColor } from '@todo/shared';
-import { cx } from '../../lib/cx';
-import { KanbanColumn } from '../../ui/kanban';
+import { useState } from 'react';
+import { APPLICATION_COLUMNS, applicationColumnOf, COLUMN_SORTS, sortColumn, type Application, type ApplicationStatus, type CardCounts, type ColumnSort } from '@todo/shared';
+import { useApp } from '../../app/AppContext';
+import { usePersistedState } from '../../hooks/usePersistedState';
+import { Board, type BoardColumn } from '../../ui/Board';
+import { Button } from '../../ui/Button';
+import { Dialog } from '../../ui/Panel';
 import { ApplicationCard } from './ApplicationCard';
 
-interface BoardProps {
+const DOT: Record<string, string> = { wishlist: 'var(--ink-muted)', applied: 'var(--cal-dusty-blue)', assessment: 'var(--cal-plum)', interviewing: 'var(--accent)', offer: 'var(--success)', closed: 'var(--cal-slate)' };
+const isStrings = (v: unknown): v is string[] => Array.isArray(v) && v.every((x) => typeof x === 'string');
+
+/** Closed is a record, so it reads newest first; the others keep the order you dragged them into. */
+export const sortOf = (sorts: Record<string, ColumnSort>, columnId: string): ColumnSort => sorts[columnId] ?? (columnId === 'closed' ? 'newest' : 'manual');
+
+interface ApplicationsBoardProps {
   applications: Application[];
-  color: CalendarColor;
-  calendarName?: string;
-  /** Applications the follow-up rule has something to say about. */
+  today: string;
   followUpIds: ReadonlySet<string>;
-  /** A card was dropped in `status`, just before `beforeId` (null = at the end of that column). */
+  counts: ReadonlyMap<string, CardCounts>;
+  files: Record<string, number> | undefined;
+  sorts: Record<string, ColumnSort>;
+  onSort: (columnId: string, sort: ColumnSort) => void;
+  /** A card was dropped in `status`, just before `beforeId` (null: at the end of that column). */
   onMove: (application: Application, status: ApplicationStatus, beforeId: string | null) => void;
+  onFollowUp: (application: Application, answer: 'accept' | 'dismiss') => void;
 }
 
-const COLUMN_PREFIX = 'col:';
-const isColumn = (id: UniqueIdentifier) => String(id).startsWith(COLUMN_PREFIX);
+/** The pipeline: a column per stage (Online Assessment reads "Assessment"; Rejected and Withdrawn share Closed, which starts folded away), cards you drag between them. */
+export function ApplicationsBoard({ applications, today, followUpIds, counts, files, sorts, onSort, onMove, onFollowUp }: ApplicationsBoardProps) {
+  const { openDialog } = useApp();
+  const [folded, setFolded] = usePersistedState<string[]>('voice-todo.applicationFolded', ['closed'], isStrings);
+  const [closing, setClosing] = useState<Application | null>(null);
+  const toggleFolded = (id: string) => setFolded(folded.includes(id) ? folded.filter((f) => f !== id) : [...folded, id]);
 
-/** The kanban board: a column per status, cards you drag between them. */
-export function Board({ applications, color, calendarName, followUpIds, onMove }: BoardProps) {
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [overStatus, setOverStatus] = useState<ApplicationStatus | null>(null);
+  const columns: BoardColumn<Application>[] = APPLICATION_COLUMNS.map((c) => {
+    const statuses: readonly ApplicationStatus[] = c.statuses;
+    const sort = sortOf(sorts, c.id);
+    return {
+      id: c.id,
+      title: c.title,
+      dot: DOT[c.id]!,
+      items: sortColumn(
+        applications.filter((a) => statuses.includes(a.status)),
+        sort,
+      ),
+      plus: c.id === 'closed' ? undefined : { label: `Add to ${c.title}`, onAdd: () => openDialog({ kind: 'application', id: 'new', status: statuses[0] }) },
+      menu: [...COLUMN_SORTS.map((s) => ({ label: `Sort: ${s.label}`, hint: sort === s.id ? 'On' : undefined, onSelect: () => onSort(c.id, s.id) })), { label: folded.includes(c.id) ? 'Show column' : 'Fold column away', onSelect: () => toggleFolded(c.id) }],
+      collapsed: folded.includes(c.id),
+      onExpand: () => toggleFolded(c.id),
+      empty: <p className="px-2 py-6 text-center font-display text-title text-ink-muted italic">Nothing here yet.</p>,
+    };
+  });
 
-  const byId = useMemo(() => new Map(applications.map((a) => [a.id, a])), [applications]);
-  const columns = useMemo(
-    () => Object.fromEntries(APPLICATION_STATUSES.map((s) => [s, applications.filter((a) => a.status === s).sort((a, b) => a.sortOrder - b.sortOrder)])) as Record<ApplicationStatus, Application[]>,
-    [applications],
-  );
-  const active = activeId ? byId.get(activeId) : undefined;
-
-  const statusOf = (id: UniqueIdentifier | null | undefined): ApplicationStatus | null => {
-    if (id === null || id === undefined) return null;
-    return isColumn(id) ? (String(id).slice(COLUMN_PREFIX.length) as ApplicationStatus) : (byId.get(String(id))?.status ?? null);
-  };
-  const nameOf = (id: UniqueIdentifier) => byId.get(String(id))?.company ?? 'card';
-
-  const announcements: Announcements = {
-    onDragStart: ({ active: a }) => `Picked up ${nameOf(a.id)}.`,
-    onDragOver: ({ active: a, over }) => (over ? `${nameOf(a.id)} is over ${statusOf(over.id) ?? 'the board'}.` : undefined),
-    onDragEnd: ({ active: a, over }) => (over ? `${nameOf(a.id)} was dropped in ${statusOf(over.id) ?? 'the board'}.` : `${nameOf(a.id)} was put back.`),
-    onDragCancel: ({ active: a }) => `Moving ${nameOf(a.id)} was cancelled.`,
-  };
-
-  function handleDragEnd({ active: dragged, over }: DragEndEvent) {
-    setActiveId(null);
-    setOverStatus(null);
-    const app = byId.get(String(dragged.id));
-    const status = statusOf(over?.id);
-    if (!app || !over || !status || over.id === dragged.id) return;
-
-    // Dropped on a column (its empty space or header): the end of it.
-    let beforeId: string | null = null;
-    if (!isColumn(over.id)) {
-      const others = columns[status].filter((a) => a.id !== app.id);
-      const at = others.findIndex((a) => a.id === over.id);
-      const rect = dragged.rect.current.translated;
-      const below = rect ? rect.top + rect.height / 2 > over.rect.top + over.rect.height / 2 : false;
-      beforeId = others[at + (below ? 1 : 0)]?.id ?? null;
+  function drop(app: Application, columnId: string, beforeId: string | null) {
+    const column = APPLICATION_COLUMNS.find((c) => c.id === columnId);
+    if (!column) return;
+    if (applicationColumnOf(app.status) === columnId) {
+      // Within its own column only your own order can change (and Closed, with two statuses, has none).
+      if (sortOf(sorts, columnId) === 'manual' && column.statuses.length === 1) onMove(app, app.status, beforeId);
+      return;
     }
-    onMove(app, status, beforeId);
+    // Closed is two statuses, so ask which.
+    if (columnId === 'closed') setClosing(app);
+    else onMove(app, column.statuses[0], sortOf(sorts, columnId) === 'manual' ? beforeId : null);
   }
 
-  return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCorners}
-      accessibility={{ announcements }}
-      onDragStart={({ active: a }) => setActiveId(String(a.id))}
-      onDragOver={({ over }) => setOverStatus(statusOf(over?.id))}
-      onDragEnd={handleDragEnd}
-      onDragCancel={() => {
-        setActiveId(null);
-        setOverStatus(null);
-      }}
-    >
-      {/* Seven columns don't fit beside the sidebar, so the board scrolls sideways instead of squeezing the cards. */}
-      <div className="-mx-1 flex overflow-x-auto px-1 pb-4">
-        {APPLICATION_STATUSES.map((status) => (
-          <Column key={status} status={status} applications={columns[status]} highlighted={overStatus === status && !!active && active.status !== status} color={color} calendarName={calendarName} followUpIds={followUpIds} />
-        ))}
-      </div>
-      <DragOverlay>
-        {active && (
-          <div className="cursor-grabbing rounded-control border border-rule bg-surface px-3">
-            <ApplicationCard application={active} color={color} calendarName={calendarName} needsFollowUp={followUpIds.has(active.id)} />
-          </div>
-        )}
-      </DragOverlay>
-    </DndContext>
-  );
-}
+  const finish = (status: ApplicationStatus) => {
+    const app = closing;
+    setClosing(null);
+    if (app) onMove(app, status, null);
+  };
 
-function Column({ status, applications, highlighted, color, calendarName, followUpIds }: { status: ApplicationStatus; applications: Application[]; highlighted: boolean; color: CalendarColor; calendarName?: string; followUpIds: ReadonlySet<string> }) {
-  const { setNodeRef } = useDroppable({ id: `${COLUMN_PREFIX}${status}` });
   return (
-    <KanbanColumn title={status} count={applications.length} className={cx('transition-colors duration-150 ease-out', highlighted && 'bg-accent-soft')}>
-      <div ref={setNodeRef} className="min-h-32 pb-4">
-        <SortableContext items={applications.map((a) => a.id)} strategy={verticalListSortingStrategy}>
-          {applications.map((a) => (
-            <SortableCard key={a.id} application={a} color={color} calendarName={calendarName} needsFollowUp={followUpIds.has(a.id)} />
-          ))}
-        </SortableContext>
-        {applications.length === 0 && <p className="pt-3 text-meta text-ink-muted">Nothing here.</p>}
-      </div>
-    </KanbanColumn>
-  );
-}
-
-function SortableCard({ application, color, calendarName, needsFollowUp }: { application: Application; color: CalendarColor; calendarName?: string; needsFollowUp: boolean }) {
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: application.id });
-  return (
-    <div
-      ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition }}
-      {...listeners}
-      className={cx('group relative cursor-grab border-b border-hairline touch-manipulation', isDragging && 'opacity-40')}
-    >
-      {/* The grip is the keyboard's way to pick the card up (the pointer can grab the whole card). */}
-      <button
-        type="button"
-        ref={setActivatorNodeRef}
-        {...attributes}
-        aria-label={`Move ${application.company}`}
-        className="absolute top-3 right-5 grid size-5 place-items-center rounded-control text-ink-muted opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100 focus-visible:opacity-100"
-      >
-        <GripVertical className="size-4" aria-hidden />
-      </button>
-      <ApplicationCard application={application} color={color} calendarName={calendarName} needsFollowUp={needsFollowUp} />
-    </div>
+    <>
+      <Board
+        label="Applications by stage"
+        columns={columns}
+        nameOf={(a) => a.company}
+        startOn="applied"
+        onDrop={drop}
+        renderCard={(a) => <ApplicationCard application={a} today={today} followUp={followUpIds.has(a.id)} counts={counts.get(a.id)} files={files?.[a.id] ?? 0} onMove={(status) => onMove(a, status, null)} onFollowUp={(answer) => onFollowUp(a, answer)} />}
+      />
+      <Dialog open={closing !== null} onClose={() => setClosing(null)} title="Rejected or withdrawn?">
+        <p className="mb-4 text-body text-ink-muted">“{closing?.company}” is moving to Closed. Which is it?</p>
+        <div className="flex gap-2">
+          <Button variant="secondary" data-autofocus onClick={() => finish('Rejected')}>
+            Rejected
+          </Button>
+          <Button variant="secondary" onClick={() => finish('Withdrawn')}>
+            Withdrawn
+          </Button>
+        </div>
+      </Dialog>
+    </>
   );
 }

@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import type { Application, Calendar, CalendarColor, Clash, Course, CreateTaskInput, Event, EventOccurrence, EventType, Semester, Span, Task, TimeBlock, UpdateCalendarInput, UpdateTaskInput } from '@todo/shared';
+import type { Application, ApplicationStatus, Calendar, CalendarColor, Clash, Course, CreateTaskInput, Event, EventOccurrence, EventType, Semester, Span, Task, TimeBlock, UpdateCalendarInput, UpdateTaskInput } from '@todo/shared';
 import type { ApplicationActions } from '../actions/useApplicationActions';
 import type { BlockFields } from '../actions/useRoutineActions';
 import type { CourseActions } from '../actions/useCourseActions';
@@ -37,7 +37,7 @@ export type DialogState =
   | { kind: 'event'; mode: 'edit'; occurrence: EventOccurrence }
   | { kind: 'semester'; id: string | 'new' }
   | { kind: 'course'; id: string | 'new'; semesterId?: string }
-  | { kind: 'application'; id: string | 'new' }
+  | { kind: 'application'; id: string | 'new'; status?: ApplicationStatus }
   /** Asked after an Interview event is made: which application is it for, and add the prep to-dos? One question per event. */
   | { kind: 'interview'; eventIds: string[] }
   /** Set time aside to work on a to-do (or change a block's time: pass its id). */

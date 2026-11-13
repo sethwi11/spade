@@ -78,16 +78,16 @@ export function ApplicationDialog() {
         )
       }
     >
-      {open && <ApplicationForm application={editing} onDone={close} />}
+      {open && <ApplicationForm application={editing} startIn={dialog.status} onDone={close} />}
     </Dialog>
   );
 }
 
-function ApplicationForm({ application, onDone }: { application: Application | null; onDone: () => void }) {
+function ApplicationForm({ application, startIn, onDone }: { application: Application | null; startIn?: ApplicationStatus; onDone: () => void }) {
   const { saveApplication } = useApp();
   const [company, setCompany] = useState(application?.company ?? '');
   const [role, setRole] = useState(application?.role ?? '');
-  const [status, setStatus] = useState<ApplicationStatus>(application?.status ?? 'Wishlist');
+  const [status, setStatus] = useState<ApplicationStatus>(application?.status ?? startIn ?? 'Wishlist');
   const [dateApplied, setDateApplied] = useState(application?.dateApplied ?? '');
   const [deadline, setDeadline] = useState(application?.deadline ?? '');
   const [location, setLocation] = useState(application?.location ?? '');

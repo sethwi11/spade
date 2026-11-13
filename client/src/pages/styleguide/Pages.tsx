@@ -4,7 +4,6 @@ import { isoWeekNumber } from '@todo/shared';
 import { formatCountdown, todayLocalISO } from '../../lib/dates';
 import { IconButton } from '../../ui/Button';
 import { QuickAddInput } from '../../ui/fields';
-import { KanbanCard, KanbanColumn, ProgressBar } from '../../ui/kanban';
 import { Segmented } from '../../ui/Segmented';
 import { Caption, Section, Stage } from './shared';
 
@@ -95,31 +94,6 @@ function Timer96() {
   );
 }
 
-function Applications() {
-  return (
-    <div>
-      <Caption>Applications board and goal</Caption>
-      <Stage className="space-y-6">
-        <div className="relative flex gap-0 overflow-x-auto">
-          <KanbanColumn title="Wishlist" count={1}>
-            <KanbanCard company="Globex" role="Data Intern" color="tomato" calendarName="Applications" />
-          </KanbanColumn>
-          <KanbanColumn title="Applied" count={2}>
-            <KanbanCard company="Acme" role="Software Engineering Intern" dateApplied="Oct 28" color="tomato" calendarName="Applications" />
-            <KanbanCard company="Initech" role="Product Intern" dateApplied="Nov 1" color="tomato" calendarName="Applications" />
-          </KanbanColumn>
-          <KanbanColumn title="Interviewing" count={1}>
-            <KanbanCard company="Hooli" role="Backend Intern" dateApplied="Oct 14" color="tomato" calendarName="Applications" />
-          </KanbanColumn>
-        </div>
-        <div className="max-w-md">
-          <ProgressBar value={3} max={10} label="offers" />
-        </div>
-      </Stage>
-    </div>
-  );
-}
-
 function Navigation() {
   const items = [
     [CalendarCheck, 'Today'],
@@ -151,7 +125,6 @@ export function Pages() {
     <Section id="pages" title="Pages" intro="How the pieces come together on the main screens.">
       <TodayHeader />
       <Timer96 />
-      <Applications />
       <Navigation />
     </Section>
   );
