@@ -17,6 +17,8 @@ export type { IcsResult } from './icsImport';
 export * from './models/courses';
 export * from './models/applications';
 export * from './applications';
+export * from './applicationBoard';
+export * from './taskBoard';
 export * from './models/templates';
 export * from './models/misc';
 export * from './models/routine';
