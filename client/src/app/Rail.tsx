@@ -27,35 +27,46 @@ function Badge({ n, active }: { n: number; active: boolean }) {
 }
 
 const focus = 'outline-accent-fill focus-visible:outline-2 focus-visible:outline-offset-2';
+/** The icons grow with the window's height, so a tall bar is filled by bigger icons as well as more room between them. */
+const icon = 'size-[clamp(1.375rem,3.2dvh,2rem)]';
 const idle = 'text-on-rail-muted hover:bg-rail-hover hover:text-on-rail';
 const active = 'bg-accent-fill text-on-accent-fill';
 
-/** The menu down the left of every page: the Spade mark (home), the pages, and Settings at the bottom. A phone gets the same items as a tab bar along the bottom. */
+/** The menu down the left of every page: the Spade mark (home) and the pages, filling the bar from top to bottom with Settings last. A phone gets the same items as a tab bar along the bottom. */
 export function Rail() {
   const { openDialog } = useApp();
   const counts = useCounts();
   const items = railItems(useSettings().settings.showHiddenPages);
-  const tile = 'flex w-full flex-col items-center gap-1 rounded-control px-1 py-2.5 text-time leading-none font-medium';
+  // Every item gets an equal share of the bar's height, so it is full whatever the window's height. The highlighted tile stops growing at 96px, so a tall window gets more room around the icons, not a slab.
+  const slot = 'group flex h-full w-full items-center justify-center outline-none';
+  const tile = (state: string) => cx('flex h-full max-h-24 w-full flex-col items-center justify-center gap-[clamp(0.25rem,0.9dvh,0.5rem)] rounded-control px-1 text-time leading-none font-medium group-focus-visible:outline-2 group-focus-visible:outline-offset-2 group-focus-visible:outline-accent-fill', state);
+  const railIdle = 'text-on-rail-muted group-hover:bg-rail-hover group-hover:text-on-rail';
   return (
-    <nav aria-label="Main" className="sticky top-0 hidden h-dvh w-22 shrink-0 flex-col items-center bg-rail py-4 text-on-rail md:flex">
-      <Link to="/" aria-label="Spade home" className={cx('mb-5 grid size-11 shrink-0 place-items-center rounded-control text-accent-fill hover:bg-rail-hover', focus)}>
+    <nav aria-label="Main" className="sticky top-0 hidden h-dvh w-22 shrink-0 flex-col items-center bg-rail pt-4 pb-3 text-on-rail md:flex">
+      <Link to="/" aria-label="Spade home" className={cx('mb-3 grid size-11 shrink-0 place-items-center rounded-control text-accent-fill hover:bg-rail-hover', focus)}>
         <SpadeMark className="size-8" />
       </Link>
-      <ul className="flex min-h-0 w-full flex-1 flex-col gap-1 overflow-y-auto px-2">
+      <ul className="flex min-h-0 w-full flex-1 flex-col overflow-y-auto px-2">
         {items.map((item) => (
-          <li key={item.to}>
-            <NavLink to={item.to} className={({ isActive }) => cx(tile, focus, isActive ? active : idle)}>
-              {({ isActive }) => <RailLabel item={item} count={counts[item.to] ?? 0} active={isActive} />}
+          <li key={item.to} className="flex min-h-14 flex-1">
+            <NavLink to={item.to} className={slot}>
+              {({ isActive }) => (
+                <span className={tile(isActive ? active : railIdle)}>
+                  <RailLabel item={item} count={counts[item.to] ?? 0} active={isActive} />
+                </span>
+              )}
             </NavLink>
           </li>
         ))}
+        <li className="mt-1 flex min-h-14 flex-1 border-t border-rail-rule pt-1">
+          <button type="button" onClick={() => openDialog({ kind: 'settings' })} className={slot}>
+            <span className={tile(railIdle)}>
+              <Settings className={icon} aria-hidden />
+              Settings
+            </span>
+          </button>
+        </li>
       </ul>
-      <div className="w-full shrink-0 border-t border-rail-rule px-2 pt-3">
-        <button type="button" onClick={() => openDialog({ kind: 'settings' })} className={cx(tile, focus, idle)}>
-          <Settings className="size-[22px]" aria-hidden />
-          Settings
-        </button>
-      </div>
     </nav>
   );
 }
@@ -64,7 +75,7 @@ function RailLabel({ item, count, active }: { item: RailItem; count: number; act
   return (
     <>
       <span className="relative">
-        <item.icon className="size-[22px]" aria-hidden />
+        <item.icon className={icon} aria-hidden />
         <Badge n={count} active={active} />
       </span>
       {item.label}

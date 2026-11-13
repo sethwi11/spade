@@ -171,13 +171,16 @@ export function CalendarView({ view, date, items, hasSelection, onSelect, onOpen
   function renderContent(arg: EventContentArg) {
     const r = arg.event.extendedProps.routine as PlanItem | undefined;
     if (r) {
-      const look = shadeProps(r.color, shadeFor(r));
+      // The routine is the backdrop: always the soft tint (the hatch for free time), so events and classes stand out in front of it.
+      const look = shadeProps(r.color, shadeFor(r) === 'free' ? 'free' : 'soft');
       const time = formatTimeRange(timePart(r.start), timePart(r.end));
       const minutes = minutesBetween(r.start, r.end);
       const todos = chips.get(r.key) ?? [];
-      const chipTop = (i: TaskItem) => `min(${(minutesBetween(r.start, combine(i.task.dueDate!, i.task.dueTime!)) / minutes) * 100}%, calc(100% - 1.5rem))`;
+      // At the to-do's time, but never over the block's own label (two lines in an hour or more, one in 30 minutes).
+      const labelRoom = minutes >= 60 ? '2.25rem' : minutes >= 30 ? '1.25rem' : '0px';
+      const chipTop = (i: TaskItem) => `max(${labelRoom}, min(${(minutesBetween(r.start, combine(i.task.dueDate!, i.task.dueTime!)) / minutes) * 100}%, calc(100% - 1.5rem)))`;
       return (
-        <div style={look.style} title={[r.title, 'routine', time, ...r.hidden.map((h) => `hides ${h}`)].join(' · ')} className={cx('@container relative h-full overflow-hidden rounded-control text-ink opacity-80', blockPadding(minutes), look.className)}>
+        <div style={look.style} title={[r.title, 'routine', time, ...r.hidden.map((h) => `hides ${h}`)].join(' · ')} className={cx('@container relative h-full overflow-hidden rounded-control text-ink', blockPadding(minutes), look.className)}>
           <BlockText title={r.title} time={time} minutes={minutes} notes={r.hidden.length > 0 && <p className="truncate text-time italic">+{r.hidden.length} hidden: {r.hidden.join(', ')}</p>} />
           {todos.length === 1 && (
             // At the to-do's time, over the block, so it never splits the block's column.
@@ -235,7 +238,8 @@ export function CalendarView({ view, date, items, hasSelection, onSelect, onOpen
         events={events}
         eventContent={renderContent}
         eventDisplay="block"
-        dayMaxEvents
+        // A month cell holds what fits; the all-day row of a week stops at two lines (four on a day), with "+N more" opening the day.
+        views={{ dayGridMonth: { dayMaxEvents: true }, timeGridWeek: { dayMaxEvents: 2 }, timeGridDay: { dayMaxEvents: 4 } }}
         moreLinkClick={(arg) => onOpenDay(localDate(arg.date))}
         moreLinkContent={(arg) => (
           <>

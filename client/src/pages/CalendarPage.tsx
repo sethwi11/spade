@@ -7,7 +7,7 @@ import { usePlanSources } from '../features/today/useTodayPlan';
 import { weekStart } from '../features/calendar/calendarModel';
 import { useApp } from '../app/AppContext';
 import { AgendaView } from '../features/calendar/AgendaView';
-import { attachChips, buildItems, calendarUrl, dataRange, isCalendarView, newEventSpan, parseCalendarQuery, shiftDate, viewTitle, type CalendarItem, type CalendarViewId } from '../features/calendar/calendarModel';
+import { attachChips, buildItems, calendarUrl, dataRange, newEventSpan, parseCalendarQuery, shiftDate, viewTitle, type CalendarItem, type CalendarViewId } from '../features/calendar/calendarModel';
 import { CalendarHeader, type Layers } from '../features/calendar/CalendarHeader';
 import { CalendarView } from '../features/calendar/CalendarView';
 import { ItemDetail } from '../features/calendar/ItemDetail';
@@ -27,8 +27,8 @@ const isLayers = (v: unknown): v is SavedLayers =>
   typeof v === 'object' && v !== null && typeof (v as Layers).events === 'boolean' && typeof (v as Layers).tasks === 'boolean' && optionalBool((v as Layers).blocks) && optionalBool((v as Layers).routine);
 const isBoolean = (v: unknown): v is boolean => typeof v === 'boolean';
 
-/** A phone has no room for a month grid, so it starts on the agenda. */
-const firstView = (): CalendarViewId => (typeof matchMedia === 'function' && matchMedia('(max-width: 639px)').matches ? 'agenda' : 'month');
+/** Opening the Calendar shows the week, the size you plan in. A phone has no room for seven columns, so it opens on the agenda. */
+const firstView = (): CalendarViewId => (typeof matchMedia === 'function' && matchMedia('(max-width: 639px)').matches ? 'agenda' : 'week');
 
 /** The calendar. */
 export default function CalendarPage() {
@@ -39,12 +39,11 @@ export default function CalendarPage() {
   const navigate = useNavigate();
   const query = parseCalendarQuery(params, today);
 
-  const [lastView, setLastView] = usePersistedState<CalendarViewId>('voice-todo.calendar.view', firstView(), isCalendarView);
   const [savedLayers, setLayers] = usePersistedState<SavedLayers>('voice-todo.calendar.layers', { events: true, tasks: true, blocks: true }, isLayers);
   const layers: Layers = { blocks: true, routine: true, ...savedLayers };
   const [heat, setHeat] = usePersistedState<boolean>('voice-todo.calendar.heat', false, isBoolean);
-  const [panel, setPanel] = usePersistedState<boolean>('voice-todo.calendar.panel', true, isBoolean);
-  const view = query.view ?? lastView;
+  const [panel, setPanel] = usePersistedState<boolean>('voice-todo.calendar.panel', false, isBoolean);
+  const view = query.view ?? firstView();
   const { date } = query;
 
   const [selection, setSelection] = useState<Selection | null>(null);
@@ -81,9 +80,7 @@ export default function CalendarPage() {
   const showPanel = panel && (view === 'week' || view === 'day');
 
   function go(next: { view?: CalendarViewId; date?: string }) {
-    const nextView = next.view ?? view;
-    if (next.view) setLastView(next.view);
-    navigate(calendarUrl({ view: nextView, date: next.date ?? date }));
+    navigate(calendarUrl({ view: next.view ?? view, date: next.date ?? date }));
   }
 
   // The routine is edited here too: the template in effect on the day you're looking at.

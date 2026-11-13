@@ -84,12 +84,14 @@ export function TodoBlock({ title, color, calendarName, done, onToggle, classNam
       style={calendarVars(color)}
       title={calendarName ? `${title} (${calendarName})` : title}
       className={cx(
-        'flex items-center gap-1 overflow-hidden rounded-control border border-dashed border-(color:--c) py-0.5 pr-2 pl-0.5 transition-opacity duration-150',
+        // A quiet dashed outline, with the calendar's color as a small square: a rainbow of dashed outlines was the loudest thing on a busy week.
+        'flex items-center gap-1 overflow-hidden rounded-control border border-dashed border-rule py-0.5 pr-2 pl-0.5 transition-opacity duration-150',
         done && 'opacity-50',
         className,
       )}
     >
       <Checkbox size="sm" checked={done} onChange={onToggle} label={`Mark "${title}" as ${done ? 'not done' : 'done'}`} />
+      <span aria-hidden className="size-2 shrink-0 bg-(color:--c)" />
       <span className={cx('truncate text-meta text-ink', done && 'line-through')}>{title}</span>
       {calendarName && <span className="sr-only">Calendar: {calendarName}</span>}
     </div>
