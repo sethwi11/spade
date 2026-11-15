@@ -2,6 +2,8 @@
 
 Read `README.md` first. Develop on the `planner` branch; `main` changes only when the owner says "merge".
 
+The current plan is .private/SPADE_DESKTOP_PLAN.md. Re-read it, and .private/HANDOFF.md if it exists, at the start of every session.
+
 ## Code style: ponytail (github.com/DietrichGebert/ponytail)
 
 - Read the code a change touches first; then make the smallest change that fully solves the task.
