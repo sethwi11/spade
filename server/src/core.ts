@@ -7,7 +7,7 @@ import { createApp } from './app';
 import { openDatabase } from './db/connection';
 import { DB_FILE, importOldData } from './importOld';
 import { guard } from './middleware/guard';
-import { createPopupScheduler, type SendPopup } from './popups';
+import type { SendPopup } from './popups';
 import { createRepositories } from './repositories';
 
 export interface CoreOptions {
@@ -20,6 +20,8 @@ export interface CoreOptions {
   /** An older Spade's database to bring over before opening. */
   importFrom?: string;
   sendPopup?: SendPopup;
+  /** Something was saved. */
+  onChange?: () => void;
 }
 
 /** Listens on this computer only. Reusing last time's port keeps the app's address the same between launches (the window's saved choices are kept per address); if something else has taken it, any free port will do. */
@@ -39,7 +41,7 @@ export async function startCore(options: CoreOptions): Promise<{ address: Addres
   const repos = createRepositories(db);
 
   let port = 0;
-  const app = createApp(repos, { uploadsDir: path.join(options.dataDir, 'uploads'), clientDir: options.clientDir, sendPopup: options.sendPopup, guard: guard(options.token, () => port) });
+  const app = createApp(repos, { uploadsDir: path.join(options.dataDir, 'uploads'), clientDir: options.clientDir, sendPopup: options.sendPopup, onChange: options.onChange, guard: guard(options.token, () => port) });
 
   // Soft-deleted tasks only need to live long enough to be undone.
   await repos.tasks.purgeDeleted(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
@@ -48,19 +50,9 @@ export async function startCore(options: CoreOptions): Promise<{ address: Addres
   const address = server.address() as AddressInfo;
   port = address.port;
 
-  // Pop-ups, until the desktop app schedules them itself: check the plan every 20 seconds, so each one lands within its minute.
-  let timer: NodeJS.Timeout | undefined;
-  if (options.sendPopup) {
-    const tick = createPopupScheduler(repos, options.sendPopup);
-    const run = () => void tick().catch((err: unknown) => console.error('Pop-up check failed:', err));
-    timer = setInterval(run, 20_000);
-    run();
-  }
-
   return {
     address,
     close: () => {
-      clearInterval(timer);
       server.close();
       db.close();
     },
@@ -79,7 +71,7 @@ if (parent) {
       SPADE_IMPORT_FROM: z.string().min(1).optional(),
     })
     .parse(process.env);
-  startCore({ dataDir: env.SPADE_DATA_DIR, token: env.SPADE_TOKEN, port: env.SPADE_PORT, clientDir: env.SPADE_CLIENT_DIR, importFrom: env.SPADE_IMPORT_FROM, sendPopup: (popup) => parent.postMessage({ popup }) }).then(
+  startCore({ dataDir: env.SPADE_DATA_DIR, token: env.SPADE_TOKEN, port: env.SPADE_PORT, clientDir: env.SPADE_CLIENT_DIR, importFrom: env.SPADE_IMPORT_FROM, sendPopup: (popup) => parent.postMessage({ popup }), onChange: () => parent.postMessage({ changed: true }) }).then(
     ({ address }) => parent.postMessage({ port: address.port }),
     (err: unknown) => {
       console.error('Spade could not start:', err);

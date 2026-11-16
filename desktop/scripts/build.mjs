@@ -1,6 +1,7 @@
 // Builds the desktop app into dist/: the main process, the preload, the core (the server) and the client.
 // `--dev` skips the client and runs Electron against Vite's dev server instead, on the "Spade Dev" data folder.
 import { spawn, spawnSync } from 'node:child_process';
+import fs from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
 import electron from 'electron';
@@ -16,6 +17,8 @@ await Promise.all([
   // better-sqlite3 stays outside the bundle: it loads a native file from its own folder.
   build({ ...common, entryPoints: ['../server/src/core.ts'], outfile: 'dist/core.cjs', external: ['better-sqlite3'] }),
 ]);
+// The menu bar icon: a one-color "template" image macOS tints for light and dark menu bars.
+for (const name of ['trayTemplate.png', 'trayTemplate@2x.png']) fs.copyFileSync(`build/${name}`, `dist/${name}`);
 
 if (!dev) {
   const { status } = spawnSync('npm', ['run', 'build', '-w', 'client', '--', '--outDir', '../desktop/dist/client', '--emptyOutDir'], { cwd: '..', stdio: 'inherit' });

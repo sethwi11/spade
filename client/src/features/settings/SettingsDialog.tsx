@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { addMinutes, parseQuotes, popupsForDay, quotesToText, SoundtrackSchema, timePart, type Soundtrack } from '@todo/shared';
+import { addMinutes, parseQuotes, popupsForDay, quotesToText, shortcutFrom, shortcutLabel, SoundtrackSchema, timePart, type DesktopPrefs, type DesktopPrefsChange, type Soundtrack } from '@todo/shared';
 import { Plus, X } from 'lucide-react';
 import { Download, Upload } from 'lucide-react';
 import { useApp } from '../../app/AppContext';
@@ -73,6 +73,8 @@ export function SettingsDialog() {
         <HiddenPages />
 
         <Popups />
+
+        {window.spade && <ThisMac />}
 
         <OfferGoal />
 
@@ -233,7 +235,65 @@ function Quotes() {
   );
 }
 
-/** Pop-ups (sent by the server as Mac notifications): on or off, the heads-up, which categories, a pause, a test, and today's count. */
+/** Choices that belong to this computer rather than to the data: kept by the desktop app, not the database. Only shown inside the app. */
+function ThisMac() {
+  const { showToast } = useApp();
+  const [prefs, setPrefs] = useState<DesktopPrefs | null>(null);
+  const [recording, setRecording] = useState(false);
+  useEffect(() => void window.spade?.getPrefs().then(setPrefs), []);
+  if (!prefs) return null;
+
+  const save = (changes: DesktopPrefsChange) =>
+    window.spade!.setPrefs(changes).then(setPrefs, (err: unknown) => showToast(err instanceof Error && err.message.includes('already uses') ? 'Another app already uses that shortcut. Try a different one.' : 'Couldn’t save that.'));
+  const toggle = (title: string, detail: string, key: 'openAtLogin' | 'trayTitle' | 'badge', disabled = false) => (
+    <label className={cx(row, disabled ? 'opacity-60' : 'cursor-pointer')}>
+      <span>
+        <span className="block text-body">{title}</span>
+        <span className="block text-meta text-ink-muted">{detail}</span>
+      </span>
+      <Checkbox checked={prefs[key]} onChange={(e) => !disabled && void save({ [key]: e.target.checked })} label={title} />
+    </label>
+  );
+
+  return (
+    <>
+      <h3 className="pt-5 text-label text-ink-muted uppercase">This Mac</h3>
+      {toggle('Open Spade at login', prefs.canOpenAtLogin ? 'Starts quietly in the menu bar.' : 'Only the installed app can do this, not a development run.', 'openAtLogin', !prefs.canOpenAtLogin)}
+      {toggle('Show the current block in the menu bar', 'Off shows only the Spade icon.', 'trayTitle')}
+      {toggle('Dock badge', 'Counts to-dos that are overdue or due today.', 'badge')}
+      <div className={row}>
+        <span>
+          <span className="block text-body">Quick-add shortcut</span>
+          <span className="block text-meta text-ink-muted">{recording ? 'Press the new shortcut: Control, Option or Command with a letter, a number or Space. Esc cancels.' : 'Works from any app.'}</span>
+        </span>
+        <span className="flex items-center gap-2">
+          <kbd className="rounded-control border border-rule px-1.5 py-0.5 font-mono text-time text-ink-muted">{shortcutLabel(prefs.quickAddShortcut)}</kbd>
+          <Button
+            variant="secondary"
+            aria-pressed={recording}
+            onClick={() => setRecording(!recording)}
+            onBlur={() => setRecording(false)}
+            onKeyDown={(e) => {
+              if (!recording) return;
+              e.preventDefault();
+              e.stopPropagation();
+              const shortcut = shortcutFrom(e);
+              if (e.key === 'Escape') setRecording(false);
+              else if (shortcut) {
+                setRecording(false);
+                void save({ quickAddShortcut: shortcut });
+              }
+            }}
+          >
+            {recording ? 'Press keys…' : 'Change'}
+          </Button>
+        </span>
+      </div>
+    </>
+  );
+}
+
+/** Pop-ups (system notifications from the desktop app): on or off, the heads-up, which categories, a pause, a test, and today's count. */
 function Popups() {
   const { showToast, calendars } = useApp();
   const { settings, update } = useAppSettings();
@@ -252,7 +312,7 @@ function Popups() {
   async function test() {
     try {
       await settingsTest();
-      showToast('Sent a test pop-up. If nothing appeared, allow notifications for “terminal-notifier” in System Settings → Notifications.');
+      showToast('Sent a test pop-up. If nothing appeared, allow notifications for Spade in System Settings → Notifications.');
     } catch (err) {
       showToast(err instanceof ApiError ? err.message : 'Couldn’t send a test pop-up.');
     }
@@ -263,7 +323,7 @@ function Popups() {
       <label className="flex cursor-pointer items-center justify-between gap-6">
         <span>
           <span className="block text-body">Pop-ups</span>
-          <span className="block text-meta text-ink-muted">Mac notifications when blocks start and end, before classes and events, at due times and at bedtime. Sent by the always-on app.</span>
+          <span className="block text-meta text-ink-muted">System notifications before classes and events, at due times, for the morning plan and closing the day. Sent by the Spade desktop app while it’s running.</span>
         </span>
         <Checkbox checked={p.enabled} onChange={(e) => void save({ enabled: e.target.checked }, e.target.checked ? 'Pop-ups on' : 'Pop-ups off')} label="Pop-ups" />
       </label>
@@ -305,6 +365,18 @@ function Popups() {
               />
               min before classes and events
             </label>
+            {(
+              [
+                ['blocks', 'When blocks start and end'],
+                ['morningPlan', 'Morning plan'],
+                ['closeDay', 'Close the day'],
+              ] as const
+            ).map(([key, label]) => (
+              <label key={key} className="flex cursor-pointer items-center gap-1 text-body">
+                <Checkbox checked={p[key]} onChange={(e) => void save({ [key]: e.target.checked })} label={label} />
+                {label}
+              </label>
+            ))}
             <label className="flex cursor-pointer items-center gap-1 text-body">
               <Checkbox checked={p.focusWarning} onChange={(e) => void save({ focusWarning: e.target.checked })} label="5 minutes left on focus blocks" />
               5 minutes left on focus blocks

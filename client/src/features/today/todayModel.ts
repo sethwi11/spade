@@ -38,34 +38,7 @@ export function summarize(todays: EventOccurrence[], tasks: Task[], today: strin
   };
 }
 
-const STRENGTH: Record<PlanKind, number> = { class: 0, event: 0, task: 1, routine: 2, open: 3 };
-const RANK = { commitment: 0, high: 1, normal: 2, free: 3 };
-
-/** What's under way at `now`: a class or event over the routine, then the stronger routine block (volleyball over club work), free and open time last. */
-export function currentItem(items: readonly PlanItem[], now: string): PlanItem | undefined {
-  const rank = (i: PlanItem) => RANK[i.priority ?? 'normal'];
-  return items.filter((i) => i.start <= now && now < i.end).sort((a, b) => STRENGTH[a.kind] - STRENGTH[b.kind] || rank(a) - rank(b))[0];
-}
-
-/** The next thing to start after `now`, skipping open time. */
-export const nextItem = (items: readonly PlanItem[], now: string) => items.find((i) => i.kind !== 'open' && i.start > now);
-
-
-/** During a routine block: every open to-do in its category or its alt category, soonest due first, then priority. Uncategorized to-dos never match. */
-export function duringBlock(tasks: readonly Task[], item: Pick<PlanItem, 'kind' | 'calendarId' | 'altCalendarId'> | undefined): Task[] {
-  if (item?.kind !== 'routine') return [];
-  const ids = [item.calendarId, item.altCalendarId].filter((id): id is string => id !== null);
-  return tasks.filter((t) => t.status === 'todo' && t.calendarId !== null && ids.includes(t.calendarId)).sort(soonestFirst);
-}
-
-/** What you set out to do now: to-dos with time set aside right now, and to-dos due during the current item (or the next hour when nothing is on). */
-export function supposedToBeDoing(tasks: readonly Task[], blocks: readonly TimeBlock[], now: string, span: { start: string; end: string } | undefined): Task[] {
-  const window = span ?? { start: now, end: addMinutes(now, 60) };
-  const scheduled = new Set(blocks.filter((b) => b.start <= now && now < b.end).map((b) => b.taskId));
-  return tasks
-    .filter((t) => t.status === 'todo' && (scheduled.has(t.id) || (t.dueDate && t.dueTime && combine(t.dueDate, t.dueTime) >= window.start && combine(t.dueDate, t.dueTime) < window.end)))
-    .sort(soonestFirst);
-}
+export { currentItem, duringBlock, nextItem, supposedToBeDoing } from '@todo/shared';
 
 /** Overlapping items sit side by side: each gets a lane, and the number of lanes its overlapping group needs. */
 export function layoutLanes(sorted: readonly PlanItem[]): Map<string, { lane: number; lanes: number }> {

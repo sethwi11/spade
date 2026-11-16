@@ -14,8 +14,22 @@ files:
   - "!node_modules/node-addon-api"
 # Nothing to compile: better-sqlite3's one binary works on Node and on Electron.
 npmRebuild: false
+protocols:
+  - name: Spade
+    schemes: [spade]
+# "Alternate": Spade can open these (drop one on its Dock icon) without becoming the app that opens them by default.
+fileAssociations:
+  - ext: ics
+    name: Calendar
+    role: Viewer
+    rank: Alternate
+  - ext: [pdf, docx, txt, png, jpg, jpeg, webp, heic, heif]
+    name: Document
+    role: Viewer
+    rank: Alternate
 mac:
   category: public.app-category.productivity
   minimumSystemVersion: "13.0"
   icon: build/icon.icns
-  identity: null
+  # Signed "ad hoc" (no Apple account): macOS refuses notifications from an app with no signature of its own. The Developer ID replaces this in D9.
+  identity: "-"

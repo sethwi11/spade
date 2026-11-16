@@ -4,7 +4,9 @@ import path from 'node:path';
 import Database from 'better-sqlite3';
 import { afterEach, describe, expect, it } from 'vitest';
 import { openDatabase } from '../src/db/connection';
+import { DEFAULT_POPUP_SETTINGS } from '@todo/shared';
 import { LATEST_VERSION, runMigrations } from '../src/db/migrations';
+import { SqliteSettingsRepository } from '../src/repositories/SqliteSettingsRepository';
 
 /*
  * The most important tests in the project: they prove that upgrading an
@@ -170,5 +172,38 @@ describe('upgrading from schema 3 to 4 (the follow-up memory)', () => {
     expect((db.prepare("SELECT application_id a FROM events WHERE id = 'e1'").get() as { a: string }).a).toBe('a1');
     expect(db.pragma('integrity_check', { simple: true })).toBe('ok');
     expect(db.pragma('foreign_key_check')).toEqual([]);
+  });
+});
+
+describe('upgrading from schema 12 to 13 (pop-up defaults for new students)', () => {
+  const popups = (db: ReturnType<typeof openDatabase>) => new SqliteSettingsRepository(db).getSync().popups;
+  const at12 = () => {
+    const db = new Database(':memory:');
+    runMigrations(db, 12);
+    return db;
+  };
+  const addTask = (db: ReturnType<typeof at12>) => db.prepare("INSERT INTO tasks (id, title, priority, status, sort_order, created_at, updated_at) VALUES ('t1', 'Made-up to-do', 'medium', 'todo', 0, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')").run();
+
+  it('a Spade already in use keeps every block announced, the 5-minute heads-up and bedtime', () => {
+    const db = at12();
+    addTask(db);
+    runMigrations(db);
+    expect(popups(db)).toMatchObject({ blocks: true, headsUpMinutes: 5, bedtime: true, morningPlan: true, closeDay: true });
+  });
+
+  it('keeps what was chosen, and every other setting', () => {
+    const db = at12();
+    db.prepare("INSERT INTO settings (key, value) VALUES ('app', ?)").run(JSON.stringify({ offerGoal: 12, popups: { ...DEFAULT_POPUP_SETTINGS, headsUpMinutes: 15, bedtime: false, blocks: undefined } }));
+    runMigrations(db);
+    const settings = new SqliteSettingsRepository(db).getSync();
+    expect(settings.offerGoal).toBe(12);
+    expect(settings.popups).toMatchObject({ blocks: true, headsUpMinutes: 15, bedtime: false });
+  });
+
+  it('a new, empty Spade gets the new defaults', () => {
+    const db = at12();
+    runMigrations(db);
+    expect(popups(db)).toEqual(DEFAULT_POPUP_SETTINGS);
+    expect(db.prepare('SELECT COUNT(*) n FROM settings').get()).toEqual({ n: 0 });
   });
 });

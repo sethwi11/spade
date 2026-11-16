@@ -1,4 +1,4 @@
-import { AppSettingsSchema, DEFAULT_SETTINGS, mergeSettings, type AppSettings, type UpdateSettingsInput } from '@todo/shared';
+import { AppSettingsSchema, DEFAULT_SETTINGS, mergeSettings, UpdateSettingsInputSchema, type AppSettings, type UpdateSettingsInput } from '@todo/shared';
 import type { Db } from '../db/connection';
 
 export interface SettingsRepository {
@@ -15,7 +15,8 @@ export class SqliteSettingsRepository implements SettingsRepository {
   getSync(): AppSettings {
     const row = this.db.prepare('SELECT value FROM settings WHERE key = ?').get(KEY) as { value: string } | undefined;
     if (!row) return DEFAULT_SETTINGS;
-    const stored = AppSettingsSchema.partial().safeParse(JSON.parse(row.value));
+    // Partial inside each group too: a document saved before a setting existed is still read, and the new setting takes its default.
+    const stored = UpdateSettingsInputSchema.safeParse(JSON.parse(row.value));
     return stored.success ? mergeSettings(DEFAULT_SETTINGS, stored.data) : DEFAULT_SETTINGS;
   }
 

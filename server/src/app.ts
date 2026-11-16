@@ -47,7 +47,7 @@ import {
   UpdateWeeklyReviewInputSchema,
 } from '@todo/shared';
 import { errorHandler, notFound } from './middleware/errorHandler';
-import type { SendPopup } from './popups';
+import { desktopState, type SendPopup } from './popups';
 import type { Repositories } from './repositories';
 import { attachmentsRouter } from './routes/attachments';
 import { backupRouter } from './routes/backup';
@@ -58,10 +58,18 @@ import { settingsRouter } from './routes/settings';
 import { soundtracksRouter } from './routes/soundtracks';
 import { tasksRouter } from './routes/tasks';
 
-/** Builds the Express app without starting it. `clientDir` serves the built app too; `sendPopup` makes "Send a test pop-up" work; `guard` (the desktop app) runs before everything. */
-export function createApp(repos: Repositories, options: { uploadsDir: string; clientDir?: string; sendPopup?: SendPopup; fetchFeed?: FetchFeed; guard?: RequestHandler }) {
+/** Builds the Express app without starting it. `clientDir` serves the built app too; `sendPopup` makes "Send a test pop-up" work; `onChange` hears about every successful write; `guard` (the desktop app) runs before everything. */
+export function createApp(repos: Repositories, options: { uploadsDir: string; clientDir?: string; sendPopup?: SendPopup; onChange?: () => void; fetchFeed?: FetchFeed; guard?: RequestHandler }) {
   const app = express();
   if (options.guard) app.use(options.guard);
+  // The desktop app re-plans its pop-ups and menu bar after anything is saved.
+  const { onChange } = options;
+  if (onChange) {
+    app.use((req, res, next) => {
+      if (req.method !== 'GET') res.on('finish', () => res.statusCode < 400 && onChange());
+      next();
+    });
+  }
 
   // 5 MB, so a JSON backup import fits; normal requests are tiny.
   app.use(express.json({ limit: '5mb' }));
@@ -103,9 +111,11 @@ export function createApp(repos: Repositories, options: { uploadsDir: string; cl
   app.use('/api/settings', settingsRouter(repos.settings));
   app.use('/api/backup', backupRouter(repos.backup));
 
+  app.get('/api/desktop/state', (_req, res, next) => void desktopState(repos).then((state) => res.json(state), next));
+
   app.post('/api/popups/test', (_req, res) => {
     if (!options.sendPopup) {
-      res.status(409).json({ error: 'PopupsOff', message: 'Pop-ups are off in this server (start it with POPUPS=on).' });
+      res.status(409).json({ error: 'PopupsOff', message: 'Pop-ups come from the Spade desktop app.' });
       return;
     }
     options.sendPopup({ at: '', title: 'Spade pop-ups are working', body: 'This is what a start or stop pop-up looks like.', url: '/', keys: [] });

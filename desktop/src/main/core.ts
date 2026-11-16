@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 const PopupSchema = z.object({ title: z.string(), body: z.string(), url: z.string() });
 export type Popup = z.infer<typeof PopupSchema>;
-const MessageSchema = z.union([z.object({ port: z.number().int().positive() }), z.object({ popup: PopupSchema }), z.object({ error: z.string() })]);
+const MessageSchema = z.union([z.object({ port: z.number().int().positive() }), z.object({ popup: PopupSchema }), z.object({ changed: z.literal(true) }), z.object({ error: z.string() })]);
 
 export const TOKEN_COOKIE = 'spade_token';
 
@@ -15,7 +15,10 @@ export interface CoreOptions {
   port: number;
   clientDir?: string;
   importFrom?: string;
+  /** "Send a test pop-up" in Settings. */
   onPopup: (popup: Popup) => void;
+  /** Something was saved, so the plan may have changed. */
+  onChanged: () => void;
   /** It stopped by itself after it was up and running. */
   onCrash: (code: number) => void;
 }
@@ -50,6 +53,7 @@ export function startCore(options: CoreOptions): Promise<Core> {
       const message = MessageSchema.safeParse(raw);
       if (!message.success) return;
       if ('popup' in message.data) return options.onPopup(message.data.popup);
+      if ('changed' in message.data) return options.onChanged();
       if ('error' in message.data) return void (reason = message.data.error);
       const { port } = message.data;
       fetch(`http://127.0.0.1:${port}/api/health`, { headers: { Cookie: `${TOKEN_COOKIE}=${options.token}` } }).then(

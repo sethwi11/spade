@@ -38,7 +38,7 @@ const task = (title: string, dueDate: string, calendarId: string | null): Task =
 // Listed with the later due date first, to catch a pop-up and a Now card that disagree about which comes first.
 const tasks = [task('Lab report', '2026-11-20', SCHOOL), task('Problem set', '2026-11-14', SCHOOL), task('Unrelated errand', '2026-11-13', GYM)];
 const src: PlanSources = { templates: [template], blocks, semesters: [], events: [], timeBlocks: [], tasks, calendars: [{ id: SCHOOL, color: 'indigo' }, { id: GYM, color: 'teal' }], overrides: [] };
-const settings = { ...DEFAULT_POPUP_SETTINGS };
+const settings = { ...DEFAULT_POPUP_SETTINGS, blocks: true, headsUpMinutes: 5, bedtime: true, morningPlan: false };
 
 describe('a whole day, minute by minute', () => {
   const popups = popupsForDay(src, FRIDAY, settings);

@@ -95,11 +95,11 @@ describe('the main window', () => {
 describe('what the app remembers', () => {
   it('starts from defaults, and survives a damaged file', () => {
     const dir = tmp();
-    expect(readState(dir)).toEqual({ port: 0, zoom: 1 });
-    writeState(dir, { port: 51234, zoom: 1.25, bounds: { x: 10, y: 40, width: 1200, height: 760 } });
-    expect(readState(dir)).toEqual({ port: 51234, zoom: 1.25, bounds: { x: 10, y: 40, width: 1200, height: 760 } });
+    expect(readState(dir)).toEqual({ port: 0, zoom: 1, closeHint: true, trayTitle: true, badge: true, quickAddShortcut: 'Control+Alt+Space' });
+    writeState(dir, { port: 51234, zoom: 1.25, closeHint: false, trayTitle: false, badge: true, quickAddShortcut: 'Alt+Command+K', bounds: { x: 10, y: 40, width: 1200, height: 760 } });
+    expect(readState(dir)).toEqual({ port: 51234, zoom: 1.25, closeHint: false, trayTitle: false, badge: true, quickAddShortcut: 'Alt+Command+K', bounds: { x: 10, y: 40, width: 1200, height: 760 } });
     fs.writeFileSync(path.join(dir, 'window.json'), '{"port": "not a number"');
-    expect(readState(dir)).toEqual({ port: 0, zoom: 1 });
+    expect(readState(dir)).toEqual({ port: 0, zoom: 1, closeHint: true, trayTitle: true, badge: true, quickAddShortcut: 'Control+Alt+Space' });
   });
 
   it('puts the window back only where it can still be reached', () => {

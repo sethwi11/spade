@@ -14,11 +14,16 @@ export const PopupSettingsSchema = z.object({
   headsUpMinutes: z.number().int().min(0).max(120),
   focusWarning: z.boolean(),
   bedtime: z.boolean(),
+  /** "Now:" and "Done:" as routine blocks and time blocks start and end. */
+  blocks: z.boolean(),
+  morningPlan: z.boolean(),
+  closeDay: z.boolean(),
   mutedCalendarIds: z.array(z.uuid()).max(100),
   pausedUntil: LocalDateTimeSchema.nullable(),
 });
 export type PopupSettings = z.infer<typeof PopupSettingsSchema>;
-export const DEFAULT_POPUP_SETTINGS: PopupSettings = { enabled: true, headsUpMinutes: 5, focusWarning: true, bedtime: true, mutedCalendarIds: [], pausedUntil: null };
+// What a new student gets. A database from before these existed keeps how it behaved (migration 13).
+export const DEFAULT_POPUP_SETTINGS: PopupSettings = { enabled: true, headsUpMinutes: 10, focusWarning: true, bedtime: false, blocks: false, morningPlan: true, closeDay: true, mutedCalendarIds: [], pausedUntil: null };
 
 /** One notification: what it says, when, and where clicking it goes. */
 export interface Popup {
@@ -28,14 +33,33 @@ export interface Popup {
   url: string;
   /** What it covers, so the same thing is never sent twice. */
   keys: string[];
+  /** What its first line is, which decides the buttons the desktop app gives it. */
+  kind?: PopupKind;
+  /** The to-do (due, reminder) or routine block (start) the first line is about. */
+  ref?: string;
+}
+
+export type PopupButton = { id: 'done' | 'snooze' | 'open'; text: string };
+const OPEN_TEXT: Partial<Record<PopupKind, string>> = { headsUp: 'Open', morning: 'Plan my day', closeDay: 'Close the day', review: 'Open review' };
+
+/** The buttons the desktop app puts on a pop-up. Done and Snooze only when it's about one to-do and nothing else: with two things in one minute, a button couldn't say which it means. */
+export function popupButtons(popup: Popup): PopupButton[] {
+  if (!popup.kind) return [];
+  if ((popup.kind === 'due' || popup.kind === 'reminder') && popup.ref && popup.keys.length === 1) return [{ id: 'done', text: 'Done' }, { id: 'snooze', text: 'Snooze 1 hour' }];
+  const open = OPEN_TEXT[popup.kind];
+  return open ? [{ id: 'open', text: open }] : [];
 }
 
 /** The minute a to-do without a time reminds on its due date. */
 export const DEFAULT_REMINDER_TIME = '09:00';
 
-type Note = { at: string; rank: number; line: string; key: string; url: string };
 // Which line leads when several land in the same minute.
-const RANK = { closeDay: 0, review: 1, start: 2, headsUp: 3, warning: 4, due: 5, reminder: 6, stop: 7, bedtime: 8 };
+const RANK = { closeDay: 0, review: 1, morning: 2, start: 3, headsUp: 4, warning: 5, due: 6, reminder: 7, stop: 8, bedtime: 9 };
+export type PopupKind = keyof typeof RANK;
+type Note = { at: string; kind: PopupKind; line: string; key: string; url: string; ref?: string };
+
+/** How long after waking the morning plan pops up. */
+export const MORNING_PLAN_MINUTES = 15;
 
 /** When the Sunday review reminder pops up, after the nightly check-in. */
 export const REVIEW_TIME = '20:30';
@@ -54,11 +78,12 @@ export function popupsForDay(src: PlanSources, date: string, settings: PopupSett
   const dayEnd = plan.bed > combine(addDays(date, 1)) ? addMinutes(plan.bed, 1) : combine(addDays(date, 1));
   const muted = (calendarId: string | null) => calendarId !== null && settings.mutedCalendarIds.includes(calendarId);
   const blockOf = (item: PlanItem) => src.blocks.find((b) => b.id === item.sourceId);
-  const wanted = (i: PlanItem) => i.kind !== 'open' && i.kind !== 'task' && !muted(i.calendarId) && (i.kind !== 'routine' || blockOf(i)?.notify !== false);
+  // Free time never notifies.
+  const wanted = (i: PlanItem) => i.kind !== 'open' && i.kind !== 'task' && i.priority !== 'free' && !muted(i.calendarId) && (i.kind !== 'routine' || blockOf(i)?.notify !== false);
   const items = plan.items.filter(wanted);
   const classes = plan.items.filter((i) => i.kind === 'class');
   const notes: Note[] = [];
-  const add = (at: string, rank: number, line: string, key: string, url = '/') => notes.push({ at, rank, line, key, url });
+  const add = (at: string, kind: PopupKind, line: string, key: string, url = '/', ref?: string) => notes.push({ at, kind, line, key, url, ref });
 
   const nextAfter = (item: PlanItem) => plan.items.find((i) => i.kind !== 'open' && i.start >= item.end && i.key !== item.key);
   // To-dos are named only for work blocks: "Ride home · Finish the lab" is noise.
@@ -71,43 +96,47 @@ export function popupsForDay(src: PlanSources, date: string, settings: PopupSett
 
   for (const item of items) {
     const protectedTime = item.kind === 'class' || item.kind === 'event' || item.priority === 'commitment';
-    if (protectedTime && settings.headsUpMinutes > 0) add(addMinutes(item.start, -settings.headsUpMinutes), RANK.headsUp, `In ${settings.headsUpMinutes} min: ${item.title} at ${clock(item.start)}`, `heads:${item.key}`);
+    if (protectedTime && settings.headsUpMinutes > 0) add(addMinutes(item.start, -settings.headsUpMinutes), 'headsUp', `In ${settings.headsUpMinutes} min: ${item.title} at ${clock(item.start)}`, `heads:${item.key}`);
     // A class gets only the heads-up: nothing pops up during it.
     if (item.kind === 'class') continue;
+    if (item.focus && settings.focusWarning && minutesBetween(item.start, item.end) >= 15) add(addMinutes(item.end, -5), 'warning', `5 minutes left: ${item.title}`, `warn:${item.key}`);
+    if (!settings.blocks) continue;
     const next = nextAfter(item);
     const soundtrack = item.soundtrack ? ` · Soundtrack: ${item.soundtrack}` : '';
     // A block that starts during a class and runs past it announces itself when the class ends.
     const startAt = classes.find((c) => c.start < item.start && item.start < c.end && item.end > c.end)?.end ?? item.start;
-    add(startAt, RANK.start, `Now: ${item.title} until ${clock(item.end)}${next ? ` · Next: ${next.title}` : ''}${matching(item)}${soundtrack}`, `start:${item.key}`);
-    add(item.end, RANK.stop, `Done: ${item.title}${next && next.start > item.end ? ` · Next: ${next.title} at ${clock(next.start)}` : ''}`, `stop:${item.key}`);
-    if (item.focus && settings.focusWarning && minutesBetween(item.start, item.end) >= 15) add(addMinutes(item.end, -5), RANK.warning, `5 minutes left: ${item.title}`, `warn:${item.key}`);
+    add(startAt, 'start', `Now: ${item.title} until ${clock(item.end)}${next ? ` · Next: ${next.title}` : ''}${matching(item)}${soundtrack}`, `start:${item.key}`, '/', item.kind === 'routine' ? (item.sourceId ?? undefined) : undefined);
+    add(item.end, 'stop', `Done: ${item.title}${next && next.start > item.end ? ` · Next: ${next.title} at ${clock(next.start)}` : ''}`, `stop:${item.key}`);
   }
 
   // When the day's last non-free block ends: the one-minute check-in.
   const last = [...plan.items].reverse().find((i) => i.kind !== 'open' && i.kind !== 'task' && i.priority !== 'free');
-  if (last && plan.templateId) add(last.end, RANK.closeDay, 'Close the day: a one-minute check-in', `close:${date}`, `/checkin?date=${date}`);
+  if (settings.closeDay && last && plan.templateId) add(last.end, 'closeDay', 'Close the day: a one-minute check-in', `close:${date}`, `/checkin?date=${date}`);
 
-  if (sundayReview && dayOfWeek(date) === 0) add(combine(date, REVIEW_TIME), RANK.review, 'Sunday review: look back on the week and set three priorities', `review:${date}`, '/review');
+  if (settings.morningPlan && plan.templateId) add(addMinutes(plan.wake, MORNING_PLAN_MINUTES), 'morning', 'Good morning. Plan your day', `morning:${date}`, '/today');
+
+  if (sundayReview && dayOfWeek(date) === 0) add(combine(date, REVIEW_TIME), 'review', 'Sunday review: look back on the week and set three priorities', `review:${date}`, '/review');
 
   if (settings.bedtime && plan.templateId) {
     const tomorrow = addDays(date, 1);
     const wake = dayBounds(activeTemplate(src.templates, tomorrow), tomorrow).wake;
-    add(plan.bed, RANK.bedtime, `Bedtime. Tomorrow starts at ${clock(wake)}`, `bed:${date}`);
+    add(plan.bed, 'bedtime', `Bedtime. Tomorrow starts at ${clock(wake)}`, `bed:${date}`);
   }
 
-  // To-dos: at their due time, and at each reminder before it.
+  // To-dos: at their due time, and at each reminder before it. One that lands during a class waits for the class to end, rather than being lost.
+  const afterClass = (at: string) => classes.find((c) => c.start < at && at < c.end)?.end ?? at;
   for (const t of src.tasks) {
     if (t.status !== 'todo' || !t.dueDate || muted(t.calendarId)) continue;
     const due = combine(t.dueDate, t.dueTime ?? DEFAULT_REMINDER_TIME);
     const message = t.notes?.split('\n')[0]?.trim();
-    if (t.dueTime) add(due, RANK.due, `Due now: ${t.title}${message ? ` · ${message}` : ''}`, `due:${t.id}@${due}`, '/tasks');
-    for (const m of t.reminders) add(addMinutes(due, -m), RANK.reminder, `Reminder: ${t.title} is due ${clock(due)}${t.dueDate !== date ? ` on ${t.dueDate}` : ''}`, `remind:${t.id}@${m}`, '/tasks');
+    if (t.dueTime) add(afterClass(due), 'due', `${afterClass(due) === due ? 'Due now' : `Was due ${clock(due)}`}: ${t.title}${message ? ` · ${message}` : ''}`, `due:${t.id}@${due}`, '/tasks', t.id);
+    for (const m of t.reminders) add(afterClass(addMinutes(due, -m)), 'reminder', `Reminder: ${t.title} is due ${clock(due)}${t.dueDate !== date ? ` on ${t.dueDate}` : ''}`, `remind:${t.id}@${m}`, '/tasks', t.id);
   }
 
   // Event reminders (an event a few days out can remind today).
   for (const o of expandOccurrences(src.events, dayStart, addDays(date, 8))) {
     if (o.allDay || o.event.reminderMinutes === null || muted(o.event.calendarId)) continue;
-    add(addMinutes(o.start, -o.event.reminderMinutes), RANK.reminder, `Reminder: ${o.event.title} at ${clock(o.start)}`, `event:${o.key}`);
+    add(addMinutes(o.start, -o.event.reminderMinutes), 'reminder', `Reminder: ${o.event.title} at ${clock(o.start)}`, `event:${o.key}`);
   }
 
   const quiet = (at: string) => classes.some((c) => c.start < at && at < c.end) || (settings.pausedUntil !== null && at < settings.pausedUntil);
@@ -119,7 +148,8 @@ export function popupsForDay(src: PlanSources, date: string, settings: PopupSett
   return [...byMinute.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([at, list]) => {
-      const sorted = list.sort((a, b) => a.rank - b.rank);
-      return { at, title: sorted[0]!.line, body: sorted.slice(1).map((n) => n.line).join('\n'), url: sorted[0]!.url, keys: sorted.map((n) => n.key) };
+      const sorted = list.sort((a, b) => RANK[a.kind] - RANK[b.kind]);
+      const lead = sorted[0]!;
+      return { at, title: lead.line, body: sorted.slice(1).map((n) => n.line).join('\n'), url: lead.url, keys: sorted.map((n) => n.key), kind: lead.kind, ...(lead.ref ? { ref: lead.ref } : {}) };
     });
 }

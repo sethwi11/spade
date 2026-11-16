@@ -1,22 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
-import type { PlanItem } from '@todo/shared';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { focusSession, nextPhase, startFocus, type FocusState, type PlanItem } from '@todo/shared';
 import { useAppSettings } from '../../data/useApplications';
 import { focusSessionHooks } from '../../data/useCheckIns';
 
-// Pomodoro on a focus block: focus and break intervals until the block ends, each finished focus interval saved as a session.
+// Pomodoro on a focus block: focus and break intervals until the block ends, each finished focus interval saved as a session (the rule itself is shared/src/focusTimer.ts).
 
-export interface FocusState {
-  /** The planned item it runs for. */
-  key: string;
-  title: string;
-  /** When the block ends (ms): the timer stops there. */
-  blockEnd: number;
-  phase: 'focus' | 'break';
-  phaseStart: number;
-  phaseEnd: number;
-  /** Focus intervals finished so far. */
-  done: number;
-}
+export type { FocusState };
 
 const KEY = 'planner.focus';
 const read = (): FocusState | null => {
@@ -54,14 +43,13 @@ function chime() {
   }
 }
 
-/** The local datetime "YYYY-MM-DDTHH:mm" as a timestamp. */
-const ms = (dt: string) => new Date(`${dt}:00`).getTime();
-
 export function useFocusTimer() {
   const { settings } = useAppSettings();
   const f = settings.focus;
   const save = focusSessionHooks.useCreate();
-  const [state, setState] = useState<FocusState | null>(read);
+  // Inside the desktop app the main process runs the timer (closing the window mustn't stop it); this only shows it.
+  const desktop = window.spade;
+  const [state, setState] = useState<FocusState | null>(() => (desktop ? null : read()));
   const [now, setNow] = useState(() => Date.now());
 
   const set = useCallback((s: FocusState | null) => {
@@ -70,44 +58,57 @@ export function useFocusTimer() {
   }, []);
   const record = useCallback(
     (from: number, to: number) => {
-      // Under a minute isn't worth a session.
-      if (to - from >= 60_000) save.mutate({ taskId: null, startedAt: new Date(from).toISOString(), durationSeconds: Math.round((to - from) / 1000) });
+      const session = focusSession(from, to);
+      if (session) save.mutate(session);
     },
     [save],
   );
 
-  // Ticks once a second while running; moves between focus and break, and stops when the block ends.
+  const phase = useRef<string | undefined>(undefined);
+  useEffect(
+    () =>
+      desktop?.onFocus((next) => {
+        // A chime as focus turns to break and back, as in a browser.
+        if (phase.current && next && next.phase !== phase.current && f.sound) chime();
+        phase.current = next?.phase;
+        setState(next);
+        setNow(Date.now());
+      }),
+    [desktop, f.sound],
+  );
+
+  // Ticks once a second while running; in a browser it also moves between focus and break, and stops when the block ends.
   useEffect(() => {
     if (!state) return;
     const id = window.setInterval(() => {
       const t = Date.now();
       setNow(t);
-      if (t < state.phaseEnd) return;
+      if (desktop || t < state.phaseEnd) return;
       if (state.phase === 'focus') record(state.phaseStart, state.phaseEnd);
-      if (state.phaseEnd >= state.blockEnd) return set(null);
-      if (f.sound) chime();
-      const done = state.done + (state.phase === 'focus' ? 1 : 0);
-      const minutes = state.phase === 'focus' ? (done % f.longBreakEvery === 0 ? f.longBreakMinutes : f.breakMinutes) : f.focusMinutes;
-      set({ ...state, done, phase: state.phase === 'focus' ? 'break' : 'focus', phaseStart: t, phaseEnd: Math.min(t + minutes * 60_000, state.blockEnd) });
+      const next = nextPhase(state, t, f);
+      if (next && f.sound) chime();
+      set(next);
     }, 1000);
     return () => window.clearInterval(id);
-  }, [state, f, record, set]);
+  }, [state, f, record, set, desktop]);
 
   const start = useCallback(
     (item: PlanItem) => {
+      if (desktop) return void desktop.focusStart({ key: item.key, title: item.title, end: item.end });
       const t = Date.now();
-      const blockEnd = ms(item.end);
-      if (blockEnd <= t) return;
-      set({ key: item.key, title: item.title, blockEnd, phase: 'focus', phaseStart: t, phaseEnd: Math.min(t + f.focusMinutes * 60_000, blockEnd), done: 0 });
+      const first = startFocus(item, t, f);
+      if (!first) return;
+      set(first);
       setNow(t);
     },
-    [f.focusMinutes, set],
+    [f, set, desktop],
   );
 
   const stop = useCallback(() => {
+    if (desktop) return void desktop.focusStop();
     if (state?.phase === 'focus') record(state.phaseStart, Date.now());
     set(null);
-  }, [state, record, set]);
+  }, [state, record, set, desktop]);
 
   return { state, now, start, stop, settings: f };
 }

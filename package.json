@@ -14,8 +14,6 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "desktop:dev": "npm run dev -w desktop",
     "desktop:pack": "npm run pack -w desktop",
-    "app:install": "bash scripts/app.sh install",
-    "app:restart": "bash scripts/app.sh restart",
     "app:uninstall": "bash scripts/app.sh uninstall",
     "app:logs": "bash scripts/app.sh logs"
   },

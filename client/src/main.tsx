@@ -25,6 +25,7 @@ const ApplicationPage = lazy(() => import('./pages/ApplicationPage'));
 const CoursesPage = lazy(() => import('./pages/CoursesPage'));
 const CoursePage = lazy(() => import('./pages/CoursePage'));
 const StyleGuide = lazy(() => import('./pages/StyleGuide'));
+const QuickAddPage = lazy(() => import('./pages/QuickAddPage'));
 const WeekPage = lazy(() => import('./pages/WeekPage'));
 const CheckInPage = lazy(() => import('./pages/CheckInPage'));
 const MoneyPage = lazy(() => import('./pages/MoneyPage'));
@@ -48,6 +49,8 @@ createRoot(document.getElementById('root')!).render(
           <WindowEffects />
           <Routes>
             <Route path="/styleguide" element={<Suspense><StyleGuide /></Suspense>} />
+            {/* The desktop app's quick-add panel: its own small window, outside the app's shell and data. */}
+            <Route path="/quick-add" element={<Suspense><QuickAddPage /></Suspense>} />
             <Route path="/display" element={<DisplayRedirect />} />
             <Route
               element={

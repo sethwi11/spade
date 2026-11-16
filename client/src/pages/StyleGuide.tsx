@@ -5,7 +5,7 @@ import { CalendarParts } from './styleguide/CalendarParts';
 import { Boards } from './styleguide/Boards';
 import { Colors } from './styleguide/Colors';
 import { Controls } from './styleguide/Controls';
-import { Desktop } from './styleguide/Desktop';
+import { Desktop, DesktopPresence } from './styleguide/Desktop';
 import { Directions } from './styleguide/Directions';
 import { Overlays } from './styleguide/Overlays';
 import { Pages } from './styleguide/Pages';
@@ -15,6 +15,7 @@ import { Typography } from './styleguide/Type';
 
 const SECTIONS = [
   ['desktop', 'Desktop window'],
+  ['desktop-presence', 'Quick add and menu bar'],
   ['boards', 'Rail and boards'],
   ['color', 'Color'],
   ['type', 'Type'],
@@ -70,6 +71,7 @@ export default function StyleGuide() {
 
         <main className="space-y-14">
           <Desktop />
+          <DesktopPresence />
           <Boards />
           <Colors />
           <Typography />

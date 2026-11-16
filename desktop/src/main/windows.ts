@@ -22,6 +22,44 @@ export function lockPermissions(session: Session, origin: () => string): void {
   session.setPermissionCheckHandler((_contents, permission, requestingOrigin) => ALLOWED_PERMISSIONS.has(permission) && sameOrigin(requestingOrigin, origin()));
 }
 
+/** A window only ever shows the app's own pages: anything else goes to the browser. */
+function lockNavigation(win: BrowserWindow, origin: () => string): void {
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    openExternal(url);
+    return { action: 'deny' };
+  });
+  win.webContents.on('will-navigate', (event, url) => {
+    if (sameOrigin(url, origin())) return;
+    event.preventDefault();
+    openExternal(url);
+  });
+}
+
+export const PANEL_SIZE = { width: 600, height: 94 };
+
+/** The quick-add panel: one line that floats over whatever app is in front, with the same locked-down page as the main window. */
+export function createQuickAddPanel(options: { origin: () => string; preload: string; version: string }): BrowserWindow {
+  const panel = new BrowserWindow({
+    ...PANEL_SIZE,
+    show: false,
+    frame: false,
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    // A Mac panel takes the keyboard without bringing Spade's other windows forward, and shows over a full-screen app.
+    ...(process.platform === 'darwin' ? { type: 'panel' as const } : {}),
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#00222c' : '#f2f8f5',
+    webPreferences: { ...WEB_PREFERENCES, preload: options.preload, additionalArguments: [`--spade-version=${options.version}`] },
+  });
+  panel.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  lockNavigation(panel, options.origin);
+  panel.on('blur', () => panel.hide());
+  return panel;
+}
+
 export function createMainWindow(options: { origin: () => string; preload: string; version: string; state: State; onClose: (bounds: Bounds, zoom: number) => void }): BrowserWindow {
   const saved = fitBounds(options.state.bounds, screen.getAllDisplays().map((d) => d.workArea));
   const win = new BrowserWindow({
@@ -39,16 +77,7 @@ export function createMainWindow(options: { origin: () => string; preload: strin
   win.once('ready-to-show', () => win.show());
   win.webContents.on('did-finish-load', () => win.webContents.setZoomFactor(options.state.zoom));
 
-  // The window only ever shows the app's own pages: anything else goes to the browser.
-  win.webContents.setWindowOpenHandler(({ url }) => {
-    openExternal(url);
-    return { action: 'deny' };
-  });
-  win.webContents.on('will-navigate', (event, url) => {
-    if (sameOrigin(url, options.origin())) return;
-    event.preventDefault();
-    openExternal(url);
-  });
+  lockNavigation(win, options.origin);
 
   win.on('close', () => options.onClose(win.getNormalBounds(), win.webContents.getZoomFactor()));
   return win;

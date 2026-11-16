@@ -1,7 +1,7 @@
-import { addDays, datePart, planningDate, popupsForDay, type PlanSources, type Popup } from '@todo/shared';
+import { addDays, datePart, nowSummary, planningDate, popupsForDay, type DesktopState, type PlanSources, type Popup } from '@todo/shared';
 import type { Repositories } from './repositories';
 
-/** Sends one pop-up (a native notification in the running app; a fake in tests). */
+/** Hands one pop-up to the desktop app to show now ("Send a test pop-up"; a fake in tests). */
 export type SendPopup = (popup: Popup) => void;
 
 /** Everything planDay reads, straight from the database: as the app shows it (no deleted templates, no classes of archived semesters, no missed to-dos). */
@@ -27,20 +27,12 @@ const pad = (n: number) => String(n).padStart(2, '0');
 /** This minute on the computer's clock, as "YYYY-MM-DDTHH:mm". */
 export const localMinute = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 
-/** Checks the plan and sends what's due this minute, each thing once (the day still going after midnight counts, as on Today). */
-export function createPopupScheduler(r: Repositories, send: SendPopup, now: () => string = localMinute) {
-  const sent = new Set<string>();
-  return async function tick(): Promise<Popup[]> {
-    const app = await r.settings.get();
-    const minute = now();
-    const src = await planSources(r);
-    // Yesterday too: a bedtime after midnight is yesterday's, and its minute is the first of the new day's planning.
-    const dates = [...new Set([addDays(datePart(minute), -1), planningDate(src.templates, minute), datePart(minute)])];
-    const due = dates.flatMap((d) => popupsForDay(src, d, app.popups, app.sundayReviewReminder)).filter((p) => p.at === minute && p.keys.some((k) => !sent.has(k)));
-    for (const p of due) {
-      p.keys.forEach((k) => sent.add(k));
-      send(p);
-    }
-    return due;
-  };
+/** What the desktop app plans its timer and menu bar from (the day still going after midnight counts, as on Today). */
+export async function desktopState(r: Repositories, minute = localMinute()): Promise<DesktopState> {
+  const app = await r.settings.get();
+  const src = await planSources(r);
+  // Yesterday too: a bedtime after midnight is yesterday's, and its minute is the first of the new day's planning.
+  const today = datePart(minute);
+  const dates = [...new Set([addDays(today, -1), planningDate(src.templates, minute), today, addDays(today, 1)])];
+  return { popups: dates.flatMap((d) => popupsForDay(src, d, app.popups, app.sundayReviewReminder)), summary: nowSummary(src, minute), pausedUntil: app.popups.pausedUntil !== null && app.popups.pausedUntil > minute ? app.popups.pausedUntil : null };
 }

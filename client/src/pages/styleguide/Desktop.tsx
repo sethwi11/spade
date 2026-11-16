@@ -1,9 +1,11 @@
 import type { ReactNode } from 'react';
 import { PanelLeftClose, PanelLeftOpen, Settings } from 'lucide-react';
 import { cx } from '../../lib/cx';
+import { Button } from '../../ui/Button';
+import { Checkbox } from '../../ui/Checkbox';
 import { SpadeMark } from '../../ui/SpadeMark';
 import { NAV, PageStrip, RAIL_GRADIENT, RailItem } from './Boards';
-import { Modes, Section } from './shared';
+import { Caption, Modes, Section } from './shared';
 
 // Static mockups of the Mac window's top-left corner at real size (made-up data): where the window buttons sit and what drags the window.
 
@@ -120,6 +122,136 @@ export function Desktop() {
             </div>
             <PageStrip />
           </Frame>
+        </div>
+      </Modes>
+    </Section>
+  );
+}
+
+// ---- D2: the quick-add panel, the menu bar item and the per-computer settings (made-up data) ----
+
+const Key = ({ children }: { children: ReactNode }) => <kbd className="rounded-control border border-rule px-1.5 py-0.5 font-mono text-time text-ink-muted">{children}</kbd>;
+
+/** The panel the global shortcut opens over whatever app is in front. `hint` adds the row where D3's chips will go. */
+function MockPanel({ typed, hint = false }: { typed?: string; hint?: boolean }) {
+  return (
+    <div className="w-[560px] max-w-full rounded-panel border border-hairline bg-surface shadow-popover">
+      <div className="flex h-14 items-center gap-3 px-4">
+        <SpadeMark className="size-6 shrink-0 text-accent" />
+        <span className={cx('min-w-0 flex-1 truncate text-section', typed ? 'text-ink' : 'text-ink-muted')}>{typed ?? 'Add a to-do…'}</span>
+        {!hint && <Key>↩</Key>}
+      </div>
+      {hint && (
+        <div className="flex items-center gap-4 border-t border-hairline px-4 py-2 text-meta text-ink-muted">
+          <span><Key>↩</Key> Add</span>
+          <span><Key>esc</Key> Close</span>
+          <span className="ml-auto">Goes to Tasks, no date</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const MenuRow = ({ children, hint, muted = false }: { children: ReactNode; hint?: string; muted?: boolean }) => (
+  <li className={cx('flex h-7 items-center justify-between gap-6 px-3 text-meta', muted && 'text-ink-muted')}>
+    <span className="truncate">{children}</span>
+    {hint && <span className="shrink-0 font-mono text-time text-ink-muted">{hint}</span>}
+  </li>
+);
+const MenuRule = () => <li aria-hidden className="my-1 border-t border-hairline" />;
+
+/** The menu bar item and its menu. The real one is drawn by macOS, so the look is the system's; this shows the words and the order. */
+function MockTray() {
+  return (
+    <div className="w-[300px]">
+      <div className="flex h-7 items-center justify-end gap-2 border-b border-hairline px-3 text-meta font-medium">
+        <SpadeMark className="size-4" />
+        Study COMP 365 · 42m
+      </div>
+      <ul className="mt-1 rounded-panel border border-hairline bg-surface py-1 shadow-popover">
+        <MenuRow hint="until 9:00 PM">Now: Study COMP 365</MenuRow>
+        <MenuRow hint="9:00 PM" muted>Next: Wind down</MenuRow>
+        <MenuRule />
+        <MenuRow>☐ Finish problem set 6</MenuRow>
+        <MenuRow>☐ Read chapter 9</MenuRow>
+        <MenuRule />
+        <MenuRow hint="⌃⌥Space">Quick Add…</MenuRow>
+        <MenuRow>Start Focus</MenuRow>
+        <MenuRow>Pause Notifications for 1 Hour</MenuRow>
+        <MenuRow>Pause Until Tomorrow</MenuRow>
+        <MenuRule />
+        <MenuRow>Open Spade</MenuRow>
+        <MenuRow hint="⌘Q">Quit Spade</MenuRow>
+      </ul>
+    </div>
+  );
+}
+
+const SettingRow = ({ title, detail, children }: { title: string; detail: string; children: ReactNode }) => (
+  <div className="flex items-center justify-between gap-6 border-b border-hairline py-4">
+    <span>
+      <span className="block text-body">{title}</span>
+      <span className="block text-meta text-ink-muted">{detail}</span>
+    </span>
+    {children}
+  </div>
+);
+const noop = () => {};
+
+export function DesktopPresence() {
+  return (
+    <Section id="desktop-presence" title="Desktop: quick add, the menu bar, This Mac" intro="Mockups for D2. The quick-add panel opens over any app from a global shortcut. A is one bare line; B adds a slim row under it, which is where the date and calendar chips arrive in D3.">
+      <Modes>
+        <div inert className="space-y-8 p-5">
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div>
+              <Caption>A · One line</Caption>
+              <div className="space-y-3">
+                <MockPanel />
+                <MockPanel typed="Email Dr. Okafor about the lab" />
+              </div>
+            </div>
+            <div>
+              <Caption>B · One line and a hint row</Caption>
+              <div className="space-y-3">
+                <MockPanel hint />
+                <MockPanel hint typed="Email Dr. Okafor about the lab" />
+              </div>
+            </div>
+          </div>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div>
+              <Caption>The menu bar item</Caption>
+              <MockTray />
+            </div>
+            <div className="max-w-[520px]">
+              <Caption>Settings · This Mac (only inside the app)</Caption>
+              <SettingRow title="Open Spade at login" detail="Starts quietly in the menu bar.">
+                <Checkbox checked={false} onChange={noop} label="Open Spade at login" />
+              </SettingRow>
+              <SettingRow title="Show the current block in the menu bar" detail="Off shows only the Spade icon.">
+                <Checkbox checked onChange={noop} label="Show the current block in the menu bar" />
+              </SettingRow>
+              <SettingRow title="Dock badge" detail="Counts to-dos that are overdue or due today.">
+                <Checkbox checked onChange={noop} label="Dock badge" />
+              </SettingRow>
+              <SettingRow title="Quick-add shortcut" detail="Works from any app.">
+                <span className="flex items-center gap-2">
+                  <Key>⌃⌥Space</Key>
+                  <Button variant="secondary">Change</Button>
+                </span>
+              </SettingRow>
+              <Caption>Settings · Pop-ups (three new switches)</Caption>
+              <div className="flex flex-wrap gap-x-6 gap-y-2 text-body">
+                {[['When blocks start and end', true], ['Morning plan', true], ['Close the day', true]].map(([label, on]) => (
+                  <span key={String(label)} className="flex items-center gap-1">
+                    <Checkbox checked={Boolean(on)} onChange={noop} label={String(label)} />
+                    {label}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </Modes>
     </Section>

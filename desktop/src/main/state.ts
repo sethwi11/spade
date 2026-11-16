@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { ShortcutSchema } from '@todo/shared';
 import { z } from 'zod';
 
 const BoundsSchema = z.object({ x: z.number().int(), y: z.number().int(), width: z.number().int().positive(), height: z.number().int().positive() });
@@ -10,6 +11,13 @@ const StateSchema = z.object({
   port: z.number().int().min(0).max(65535).default(0),
   bounds: BoundsSchema.optional(),
   zoom: z.number().min(0.25).max(5).default(1),
+  /** Closing the window explains, until told not to, that Spade keeps running in the menu bar. */
+  closeHint: z.boolean().default(true),
+  /** The menu bar shows the current block beside the icon. */
+  trayTitle: z.boolean().default(true),
+  /** The Dock icon counts to-dos that are overdue or due today. */
+  badge: z.boolean().default(true),
+  quickAddShortcut: ShortcutSchema.default('Control+Alt+Space'),
 });
 export type State = z.infer<typeof StateSchema>;
 

@@ -517,6 +517,16 @@ const migrations: Migration[] = [
       );
     `);
   },
+
+  // v13: pop-up defaults changed for new students (block starts and ends off, bedtime off, a 10-minute heads-up). A Spade that is already in use keeps how it behaved: the old defaults are written into its settings wherever it never chose.
+  (db) => {
+    const used = db.prepare("SELECT EXISTS(SELECT 1 FROM settings WHERE key = 'app') OR EXISTS(SELECT 1 FROM tasks) OR EXISTS(SELECT 1 FROM events) OR EXISTS(SELECT 1 FROM routine_blocks) AS used").get() as { used: number };
+    if (!used.used) return;
+    const row = db.prepare("SELECT value FROM settings WHERE key = 'app'").get() as { value: string } | undefined;
+    const stored = row ? (JSON.parse(row.value) as { popups?: object }) : {};
+    const value = JSON.stringify({ ...stored, popups: { blocks: true, headsUpMinutes: 5, bedtime: true, ...stored.popups } });
+    db.prepare("INSERT INTO settings (key, value) VALUES ('app', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(value);
+  },
 ];
 
 /** How many migrations exist: the schema version a fully up-to-date database has. */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addDays, DEFAULT_POPUP_SETTINGS, popupsForDay, type Event, type PlanSources, type RoutineBlock, type RoutineOverride, type Task, type WeekTemplate } from '../src';
+import { addDays, DEFAULT_POPUP_SETTINGS, popupButtons, popupsForDay, type Event, type PlanSources, type RoutineBlock, type RoutineOverride, type Task, type WeekTemplate } from '../src';
 
 // A made-up student's week.
 const NOW = '2026-01-01T00:00:00.000Z';
@@ -30,7 +30,9 @@ const src = (over: Partial<PlanSources> = {}): PlanSources => ({
   templates: [template], blocks: [], semesters: [], events: [], timeBlocks: [], tasks: [], calendars: [{ id: CAL, color: 'indigo' }, { id: OTHER, color: 'teal' }], overrides: [], ...over,
 });
 const at = (list: ReturnType<typeof popupsForDay>, time: string) => list.find((p) => p.at === `${WED}T${time}`);
-const settings = { ...DEFAULT_POPUP_SETTINGS, bedtime: false };
+// How Spade behaved before the new-student defaults: every block announced, a 5-minute heads-up, bedtime on.
+const BEFORE = { ...DEFAULT_POPUP_SETTINGS, blocks: true, headsUpMinutes: 5, bedtime: true, morningPlan: false };
+const settings = { ...BEFORE, bedtime: false };
 
 describe('pop-ups for a day', () => {
   it('starts a block with what it is, how long, what is next and the to-dos that match it', () => {
@@ -98,14 +100,16 @@ describe('pop-ups for a day', () => {
 
   it('opens the check-in when the last non-free block ends, ahead of what else lands then', () => {
     const blocks = [block({ start: '20:00', end: '22:00', title: 'Read' }), block({ start: '22:00', end: '23:30', title: 'Free', priority: 'free', calendarId: null })];
-    const close = at(popupsForDay(src({ blocks }), WED, DEFAULT_POPUP_SETTINGS), '22:00')!;
+    const close = at(popupsForDay(src({ blocks }), WED, BEFORE), '22:00')!;
     expect(close.title).toBe('Close the day: a one-minute check-in');
     expect(close.url).toBe(`/checkin?date=${WED}`);
-    expect(close.body).toContain('Now: Free until 11:30 PM');
+    expect(close.body).toContain('Done: Read');
+    // Free time never announces itself.
+    expect(close.body).not.toContain('Free');
   });
 
   it('says goodnight at bedtime with when tomorrow starts', () => {
-    const list = popupsForDay(src(), WED, DEFAULT_POPUP_SETTINGS);
+    const list = popupsForDay(src(), WED, BEFORE);
     expect(at(list, '22:00')?.title).toBe('Bedtime. Tomorrow starts at 7:00 AM');
   });
 
@@ -114,7 +118,7 @@ describe('pop-ups for a day', () => {
     const classes = [2, 4].map((weekday) => ev({ title: 'Lecture', courseId: id(), start: `${addDays('2026-11-08', weekday)}T14:00`, end: `${addDays('2026-11-08', weekday)}T15:30`, id: id() }));
     for (let d = 0; d < 7; d++) {
       const date = addDays('2026-11-08', d);
-      const list = popupsForDay(src({ blocks, events: classes }), date, DEFAULT_POPUP_SETTINGS);
+      const list = popupsForDay(src({ blocks, events: classes }), date, BEFORE);
       expect(new Set(list.map((p) => p.at)).size).toBe(list.length);
       for (const c of classes) expect(list.some((p) => p.at > c.start && p.at < c.end)).toBe(false);
       const weekday = new Date(`${date}T12:00`).getDay();
@@ -122,6 +126,62 @@ describe('pop-ups for a day', () => {
       // On class days, Read's start moves to the minute the class ends.
       if (weekday === 2 || weekday === 4) expect(list.find((p) => p.title.startsWith('Now: Read'))?.at).toBe(`${date}T15:30`);
     }
+  });
+});
+
+describe('what a new student gets', () => {
+  const blocks = [block({ start: '09:00', end: '10:00', title: 'Study', focus: true })];
+  const lecture = ev({ courseId: id() });
+  const due = task({ title: 'Lab report', dueTime: '16:00' });
+  const list = popupsForDay(src({ blocks, events: [lecture], tasks: [due] }), WED, DEFAULT_POPUP_SETTINGS);
+
+  it('is quiet about blocks starting and ending, and about bedtime', () => {
+    expect(list.filter((p) => /^(Now|Done|Bedtime)/.test(p.title))).toEqual([]);
+    expect(at(list, '09:55')?.title).toBe('5 minutes left: Study');
+  });
+  it('plans the morning 15 minutes after waking and closes the day', () => {
+    expect(at(list, '07:15')).toMatchObject({ kind: 'morning', url: '/today' });
+    expect(list.some((p) => p.kind === 'closeDay')).toBe(true);
+    const off = popupsForDay(src({ blocks }), WED, { ...DEFAULT_POPUP_SETTINGS, morningPlan: false, closeDay: false });
+    expect(off.some((p) => p.kind === 'morning' || p.kind === 'closeDay')).toBe(false);
+  });
+  it('gives a heads-up 10 minutes before a class', () => {
+    expect(at(list, '12:50')).toMatchObject({ kind: 'headsUp', title: 'In 10 min: Lecture at 1:00 PM' });
+  });
+  it('says which to-do a due pop-up is about, for its buttons', () => {
+    expect(at(list, '16:00')).toMatchObject({ kind: 'due', ref: due.id, keys: [`due:${due.id}@${WED}T16:00`] });
+  });
+});
+
+describe('a to-do that comes due during a class', () => {
+  const lecture = ev({ courseId: id() }); // 1:00 to 2:00 PM
+  const quiz = task({ title: 'Submit quiz', dueTime: '13:34', reminders: [10] });
+  const list = popupsForDay(src({ events: [lecture], tasks: [quiz] }), WED, { ...DEFAULT_POPUP_SETTINGS, closeDay: false });
+
+  it('stays quiet during the class', () => {
+    expect(list.filter((p) => p.at > `${WED}T13:00` && p.at < `${WED}T14:00`)).toEqual([]);
+  });
+  it('is said once the class ends, with its reminder, and says when it was due', () => {
+    const after = at(list, '14:00')!;
+    expect(after.title).toBe('Was due 1:34 PM: Submit quiz');
+    expect(after.body).toBe('Reminder: Submit quiz is due 1:34 PM');
+    expect(after).toMatchObject({ kind: 'due', ref: quiz.id });
+  });
+});
+
+describe('the buttons on a pop-up', () => {
+  const lab = task({ title: 'Lab report', dueTime: '16:00' });
+  const ids = (tasks: Task[], time: string) => popupButtons(at(popupsForDay(src({ tasks }), WED, DEFAULT_POPUP_SETTINGS), time)!).map((b) => b.id);
+
+  it('offers Done and Snooze on a pop-up about one to-do', () => {
+    expect(ids([lab], '16:00')).toEqual(['done', 'snooze']);
+  });
+  it('offers neither when two to-dos share the minute', () => {
+    expect(ids([lab, task({ title: 'Quiz', dueTime: '16:00' })], '16:00')).toEqual([]);
+  });
+  it('names the one thing a morning plan or a heads-up opens', () => {
+    expect(popupButtons({ at: '', title: '', body: '', url: '/today', keys: ['morning:x'], kind: 'morning' })).toEqual([{ id: 'open', text: 'Plan my day' }]);
+    expect(popupButtons({ at: '', title: '', body: '', url: '/', keys: [] })).toEqual([]);
   });
 });
 
