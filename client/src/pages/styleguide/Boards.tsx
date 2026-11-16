@@ -151,7 +151,7 @@ const QuickBar = () => (
 
 // ============ the rail ============
 
-const NAV: readonly [string, LucideIcon, number][] = [
+export const NAV: readonly [string, LucideIcon, number][] = [
   ['Today', CalendarCheck, 6],
   ['Calendar', CalendarDays, 0],
   ['Tasks', ListTodo, 0],
@@ -162,7 +162,7 @@ const NAV: readonly [string, LucideIcon, number][] = [
 type State = 'idle' | 'active' | 'hover' | 'focus';
 
 /** What a mockup page looks like beside a rail: a title and three cards, so you can judge the edge. */
-const PageStrip = () => (
+export const PageStrip = () => (
   <div className="min-w-0 flex-1 bg-paper p-4">
     <div className="mb-4 h-6 w-24 rounded-control bg-hairline" />
     <div className="space-y-3">
@@ -180,7 +180,7 @@ const Badge = ({ n, size = 18 }: { n: number; size?: number }) => (
 );
 
 /** Direction A and C (collapsed): the icon sits in a pill; the honey-tinted pill and a small edge bar mark where you are. */
-function RailItem({ label, icon: Icon, count, state, paper = false }: { label: string; icon: LucideIcon; count: number; state: State; paper?: boolean }) {
+export function RailItem({ label, icon: Icon, count, state, paper = false }: { label: string; icon: LucideIcon; count: number; state: State; paper?: boolean }) {
   const on = state === 'active';
   return (
     <li className="relative">
@@ -207,7 +207,7 @@ function RailItem({ label, icon: Icon, count, state, paper = false }: { label: s
   );
 }
 
-const RAIL_GRADIENT: CSSProperties = { background: 'linear-gradient(180deg, color-mix(in srgb, var(--rail), var(--on-rail) 8%) 0%, var(--rail) 60%)', boxShadow: 'inset -1px 0 0 var(--rail-rule)' };
+export const RAIL_GRADIENT: CSSProperties = { background: 'linear-gradient(180deg, color-mix(in srgb, var(--rail), var(--on-rail) 8%) 0%, var(--rail) 60%)', boxShadow: 'inset -1px 0 0 var(--rail-rule)' };
 
 /** A: the compact rail, items grouped at the top, Settings pinned at the bottom. B: the same on the page's own surface. */
 function CompactRail({ paper = false }: { paper?: boolean }) {

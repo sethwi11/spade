@@ -7,6 +7,17 @@
  * Global base. Everything else is a component using the tokens (no `dark:` classes: the
  * tokens flip under .dark, so components don't know which mode they are in).
  */
+/*
+ * Inside the Mac app the title bar is hidden and the window buttons sit over the page's top-left corner
+ * (main.tsx puts `mac-app` on <html>). `mac-app:` classes make room for them; the strip that drags the
+ * window is in WindowEffects. A dialog is never part of it, so its own buttons always work.
+ */
+@custom-variant mac-app (&:where(.mac-app, .mac-app *));
+
+.mac-app dialog {
+  -webkit-app-region: no-drag;
+}
+
 @layer base {
   html {
     -webkit-font-smoothing: antialiased;

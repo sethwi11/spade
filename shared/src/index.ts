@@ -25,6 +25,7 @@ export * from './models/routine';
 export * from './planDay';
 export * from './quotes';
 export * from './popups';
+export type { DesktopCommand, SpadeBridge } from './desktop';
 export * from './models/checkins';
 export * from './models/money';
 export * from './money';

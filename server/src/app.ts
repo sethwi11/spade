@@ -1,5 +1,5 @@
 import path from 'node:path';
-import express from 'express';
+import express, { type RequestHandler } from 'express';
 import {
   CreateApplicationInputSchema,
   CreateCalendarInputSchema,
@@ -58,9 +58,10 @@ import { settingsRouter } from './routes/settings';
 import { soundtracksRouter } from './routes/soundtracks';
 import { tasksRouter } from './routes/tasks';
 
-/** Builds the Express app without starting it. `clientDir` serves the built app too; `sendPopup` makes "Send a test pop-up" work. */
-export function createApp(repos: Repositories, options: { uploadsDir: string; clientDir?: string; sendPopup?: SendPopup; fetchFeed?: FetchFeed }) {
+/** Builds the Express app without starting it. `clientDir` serves the built app too; `sendPopup` makes "Send a test pop-up" work; `guard` (the desktop app) runs before everything. */
+export function createApp(repos: Repositories, options: { uploadsDir: string; clientDir?: string; sendPopup?: SendPopup; fetchFeed?: FetchFeed; guard?: RequestHandler }) {
   const app = express();
+  if (options.guard) app.use(options.guard);
 
   // 5 MB, so a JSON backup import fits; normal requests are tiny.
   app.use(express.json({ limit: '5mb' }));

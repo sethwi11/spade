@@ -5,12 +5,15 @@
   "workspaces": [
     "shared",
     "server",
-    "client"
+    "client",
+    "desktop"
   ],
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
+    "desktop:dev": "npm run dev -w desktop",
+    "desktop:pack": "npm run pack -w desktop",
     "app:install": "bash scripts/app.sh install",
     "app:restart": "bash scripts/app.sh restart",
     "app:uninstall": "bash scripts/app.sh uninstall",
@@ -20,6 +23,6 @@
     "typescript": "^7.0.2"
   },
   "engines": {
-    "node": ">=20.19"
+    "node": ">=22.14"
   }
 }

@@ -56,8 +56,9 @@ export default defineConfig(({ mode }) => {
       // The browser only ever talks to Vite (same origin), and Vite forwards
       // /api/* to Express. That means no CORS setup, and later the Anthropic API
       // key stays on the server, where the browser can't see it.
+      // changeOrigin: the desktop app's API only answers requests addressed to itself (its Host check).
       proxy: {
-        '/api': `http://127.0.0.1:${apiPort}`,
+        '/api': { target: `http://127.0.0.1:${apiPort}`, changeOrigin: true },
       },
     },
     test: {

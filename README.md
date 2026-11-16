@@ -50,7 +50,7 @@ Built one phase at a time; each is reviewed before it's merged. Phases 1–15 ar
 
 ## Setup
 
-Requires Node 20.19+ (Node 22 recommended).
+Requires Node 22.14 or newer (Node 24 recommended: it is the Node the desktop app runs on).
 
 > Keep the project **out of iCloud-synced folders** (Desktop, Documents). iCloud evicts `node_modules` files to the cloud, and the dev servers then hang.
 
@@ -66,6 +66,8 @@ Open <http://localhost:5173>. The API runs on port 3001 and Vite proxies `/api` 
 | `npm run dev` | API server + web app with hot reload |
 | `npm test` | All unit and API tests (Vitest) |
 | `npm run typecheck` | Type-checks every package |
+| `npm run desktop:dev` | The desktop app against Vite's dev server, on its own "Spade Dev" data folder |
+| `npm run desktop:pack` | Builds an unsigned `Spade.app` in `desktop/release/mac-arm64/` |
 
 ## Adding events from files
 
@@ -108,6 +110,7 @@ Everything lives in one SQLite file, `server/data/todo.db`. It is not in git and
 shared/   zod schemas + TypeScript types used by both sides; date and recurrence math
 server/   Express API; data-access layer (repository interfaces + SQLite); versioned migrations
 client/   React + Vite + Tailwind UI; TanStack Query for server data
+desktop/  the Electron app around them: windows, menus, where data lives (see "The desktop app")
 ```
 
 - **One source of truth for the data model.** Every model is a zod schema in `shared/`. The server validates every request with it, and the client gets its TypeScript types from it, so the two can't drift apart.
@@ -115,6 +118,41 @@ client/   React + Vite + Tailwind UI; TanStack Query for server data
 - **Dates are local.** A due date is a plain `YYYY-MM-DD` string and an event time is a local `YYYY-MM-DDTHH:mm` with no timezone, so "class at 10:00" stays at 10:00 through daylight saving changes.
 - **Versioned migrations** (`PRAGMA user_version`): new schema changes are appended, never edited, so an existing database upgrades in place.
 - **TanStack Query** caches server data in the browser and does optimistic updates: the screen changes immediately and rolls back if the server refuses.
+
+## The desktop app
+
+Spade is becoming an app you download (Mac first). `desktop/` wraps the same server and client in Electron; nothing about the browser setup changes, and `npm run dev` works as before.
+
+- **Three processes.** The *main* process (`desktop/src/main`) owns the window, the menus and where data lives. It starts the *core*, which is this repo's server running as an Electron utility process (`server/src/core.ts`: the same `createApp`, on a folder and port the app chooses). The *window* loads the built client from the core and talks to `/api` with fetch, as in a browser. `server/src/index.ts` stays the entry for `npm run dev` and the always-on app.
+- **Where data lives.** `~/Library/Application Support/Spade/`: `spade.db`, `uploads/`, `backups/`, and `window.json` (window size, zoom, the port). Logs are in `~/Library/Logs/Spade/spade.log` (Help → Show Log in Finder). A development run uses "Spade Dev" for both, so it can never touch real data; `SPADE_DATA_DIR=<folder>` points any run at a throwaway folder (tests).
+- **The lock on the local API** (`server/src/middleware/guard.ts`, off in the browser setup). The core listens on `127.0.0.1` only. Every request must be addressed to exactly `127.0.0.1:<port>` (so a web page that points its own name at this computer is refused, 403) and carry a token made new at each launch (401 without it). The main process gives the window the token as a cookie the page's own scripts can't read. The pages themselves are behind the same lock, and there are no CORS headers.
+- **One address between launches.** A browser keeps a site's saved choices (theme, rail open, Board or List) per address, port included. So the port is picked at random once, remembered, and reused while it's free; if something has taken it, any free port is used and remembered instead. The token and the Host check protect the API, not the port being secret.
+- **The window** has no Node, its own sandbox and context isolation. It only ever shows the app's own pages: links that leave open in your browser, and only `https` ones. Every permission a page can ask for is refused except notifications, full screen (Shift+F) and writing to the clipboard (Copy summary). A content policy allows scripts from the app only (plus WebAssembly, for reading text out of pictures); styles may be inline because React and FullCalendar write them. The theme script moved out of `index.html` into `client/public/theme.js` for that policy.
+- **No title bar on a Mac.** The window buttons sit over the top of the rail (the Spade mark moves down to make room; on Home, which has no rail, the clock does), and the top 24px of every page drags the window. That strip is padding on every page, so it never covers a control, and a dialog is never part of it. A narrow window drags by the phone layout's top bar, with the Spade name centered clear of the buttons. All of it is the `mac-app` variant in `index.css`, switched on by `main.tsx` only inside the Mac app; the mockups it was built from are on the style guide (Desktop window).
+- **The bridge is two listeners.** `window.spade` (typed in `shared/src/desktop.ts`) lets the page hear "open this page" and "do this command" from the menus. The page can't call into the app at all, so there is nothing to validate yet; all data goes through the API. In a browser `window.spade` is undefined and everything works without it.
+- **Menus do what the keys do.** File → New To-do is N on that page (the quick-add bar, or the form with the block's category on Home), New Event is E, Find is `/`. `useDesktopCommands` routes each menu item to the page that's open. Undo in a text field undoes typing; anywhere else it undoes the last change in Spade (there is no Redo for those). ⌘1 to ⌘6 are the rail's pages, ⌘, is Settings, ⌘W closes the window and Spade keeps running.
+- **If the core stops,** it is started again once by itself on the same address, so the open page carries on with whatever was being typed. If it stops again within five minutes, or doesn't start, a dialog says so in plain words with Try Again, Show Log in Finder and Quit. SQLite's WAL mode means a killed core loses nothing that was saved.
+- **Bringing over an older Spade** (`server/src/importOld.ts`). On its first launch the installed app looks for the older always-on Spade (through its launch job's file) and offers to copy its database and attached files. The old database is opened read-only and copied with SQLite's backup API, which is safe while the old app is running; nothing in the old folder is moved or changed. The copy lands beside the new database before anything is replaced, and whatever was in the new app is saved to `backups/` first. File → Bring Over Existing Spade Data does the same with a file you pick.
+- **Pop-ups, for now.** The core still checks the plan every 20 seconds, and the main process shows each pop-up as a Spade notification (clicking one opens its page). The app's own scheduler replaces this next.
+- **Building.** `desktop/scripts/build.mjs` uses esbuild to bundle main, preload and the core (as CommonJS, since Express is), then builds the client into `desktop/dist/client`. `better-sqlite3` 13 stays outside the bundle; its one prebuilt file works on Node and Electron, so nothing is compiled. `electron-builder` packs it (unsigned for now; signing, the Intel build and updates come later). The first launch of a fresh build takes a few seconds while macOS checks it; after that the Now screen is usable about 0.6 seconds after launch on an Apple-silicon Mac.
+
+### Security checklist
+
+Each rule, and where it is kept. Tests are in `server/test/guard.test.ts`, `server/test/core.test.ts` and `desktop/test/main.test.ts`.
+
+| Rule | Kept by |
+| --- | --- |
+| The page has no Node, a sandbox, context isolation and web security | `WEB_PREFERENCES` in `windows.ts` (test) |
+| The window shows only the app's pages; other links go to the browser, `https` only | `createMainWindow` (tests) |
+| Permissions are refused, apart from the three above, and all of them for any other page | `lockPermissions` (test) |
+| A content policy: scripts from the app only | `guard.ts` (test) |
+| The API listens on `127.0.0.1` only, on the app's port | `listen` in `core.ts` (test) |
+| A token made at each launch, in an `HttpOnly`, `SameSite=Strict` cookie; 401 without it | `guard.ts`, `bringUpCore` in `index.ts` (tests) |
+| Any other `Host` is refused | `guard.ts` (test) |
+| No CORS headers | `guard.ts` (test) |
+| The page can't call into the app | the preload exposes listeners only |
+| One copy at a time, so two never write one database | the single-instance lock in `index.ts` |
+| Still to come | Google sign-in in the system browser; signing, notarizing, fuses, verified updates and `npm audit` in the release script |
 
 ## The calendar
 

@@ -10,7 +10,7 @@ interface Handlers {
 }
 
 /** True when the keystroke belongs to a text field, so shortcuts must stay out of the way. */
-function isTyping(target: EventTarget | null): boolean {
+export function isTyping(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
 }

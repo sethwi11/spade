@@ -1,0 +1,21 @@
+# Local, unsigned builds for now. Signing, notarization, both architectures and the updater arrive in D9.
+
+# Provisional. The real id is chosen with the domain before the first signed release, and never changes after it (auto-update, the Keychain entry and the notification permission all hang on it).
+appId: dev.spade.unsigned
+productName: Spade
+directories:
+  output: release
+files:
+  - dist/**
+  - package.json
+  # better-sqlite3 ships its compiled files; its source, its build-time headers and other systems' builds stay out of the Mac app.
+  - "!node_modules/better-sqlite3/{deps,src,binding.gyp}"
+  - "!node_modules/better-sqlite3/prebuilds/{linux,linuxmusl,win32}-*"
+  - "!node_modules/node-addon-api"
+# Nothing to compile: better-sqlite3's one binary works on Node and on Electron.
+npmRebuild: false
+mac:
+  category: public.app-category.productivity
+  minimumSystemVersion: "13.0"
+  icon: build/icon.icns
+  identity: null

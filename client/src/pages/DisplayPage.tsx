@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import { CalendarPlus, ListPlus, Menu } from 'lucide-react';
 import { datePart, minutesBetween, timePart, type PlanItem } from '@todo/shared';
 import { useApp } from '../app/AppContext';
+import { useDesktopCommands } from '../app/useDesktopCommands';
 import { Agenda, categoryOf, Legend } from '../features/today/Agenda';
 import { DayChangeDialog } from '../features/today/DayChangeDialog';
 import { TaskLines } from '../features/today/NowCard';
@@ -42,6 +43,7 @@ export default function DisplayPage() {
   const addEvent = () => openDialog({ kind: 'event', mode: 'new', defaults: defaults.event });
   // N and E, so adding things through the day needs no mouse.
   useShortcuts({ newTask: addTask, newEvent: addEvent, undo: () => void undoLast(), showHelp: () => openDialog({ kind: 'shortcuts' }) });
+  useDesktopCommands({ newTask: addTask, newEvent: addEvent });
   const actions = (
     <>
       <Button variant="primary" icon={ListPlus} className={BIG_BUTTON} onClick={addTask}>
@@ -54,7 +56,7 @@ export default function DisplayPage() {
   );
 
   return (
-    <div className="flex min-h-dvh flex-col bg-paper px-6 py-6 text-ink md:px-10 md:py-8 lg:h-dvh lg:overflow-hidden">
+    <div className="flex min-h-dvh flex-col bg-paper px-6 py-6 text-ink mac-app:pt-12 md:px-10 md:py-8 md:mac-app:pt-12 lg:h-dvh lg:overflow-hidden">
       <header className="flex items-start justify-between gap-4">
         <div>
           <h1 className="sr-only">Home</h1>

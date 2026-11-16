@@ -37,6 +37,8 @@ function DisplayRedirect() {
   return <Navigate to={{ pathname: '/', search: useLocation().search }} replace />;
 }
 
+if (window.spade?.platform === 'darwin') document.documentElement.classList.add('mac-app');
+
 // Providers, outside in: settings (applies the theme), the server-data cache, the router, then AppProvider (shared data, actions, dialogs, toast).
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

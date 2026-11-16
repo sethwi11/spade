@@ -14,5 +14,8 @@ export function WindowEffects() {
       if (url && url.origin === window.location.origin) navigate(url.pathname + url.search);
     });
   }, [navigate]);
-  return null;
+  // The desktop app's menus and pop-ups ask for a page the same way.
+  useEffect(() => window.spade?.onNavigate((path) => path.startsWith('/') && !path.startsWith('//') && navigate(path)), [navigate]);
+  // The Mac app has no title bar: the top edge of every page drags the window instead. 24px, which is padding on every page, so it never covers a control.
+  return window.spade?.platform === 'darwin' ? <div aria-hidden className="fixed inset-x-0 top-0 z-40 h-6 [-webkit-app-region:drag]" /> : null;
 }

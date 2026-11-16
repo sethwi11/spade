@@ -71,7 +71,7 @@ export function Rail() {
   );
 
   return (
-    <nav aria-label="Main" className={cx('sticky top-0 hidden h-dvh shrink-0 flex-col bg-linear-to-b from-rail-lift to-rail to-60% py-5 text-on-rail shadow-[inset_-1px_0_0_var(--rail-rule)] md:flex', open ? 'w-58' : 'w-22 items-center')}>
+    <nav aria-label="Main" className={cx('sticky top-0 hidden h-dvh shrink-0 flex-col bg-linear-to-b from-rail-lift to-rail to-60% py-5 text-on-rail shadow-[inset_-1px_0_0_var(--rail-rule)] mac-app:pt-12 md:flex', open ? 'w-58' : 'w-22 items-center')}>
       {open ? (
         <div className="flex items-center justify-between px-5">
           {home}

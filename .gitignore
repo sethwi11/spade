@@ -23,3 +23,6 @@ server/data/
 
 # private planning notes, seed data and anything personal (never commit)
 .private/
+
+# desktop app builds
+desktop/release/

@@ -11,15 +11,7 @@
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f2f8f5" />
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#00222c" />
     <title>Spade</title>
-    <script>
-      // Apply the saved theme before first paint, so dark mode doesn't flash white on load.
-      try {
-        var t = localStorage.getItem('voice-todo.theme') || 'system';
-        if (t === 'dark' || (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)) {
-          document.documentElement.classList.add('dark');
-        }
-      } catch (e) {}
-    </script>
+    <script src="/theme.js"></script>
   </head>
   <body>
     <div id="root"></div>

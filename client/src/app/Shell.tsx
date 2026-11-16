@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { Link, Outlet, useLocation, useNavigate } from 'react-router';
+import { Link, Outlet, useLocation } from 'react-router';
 import { useShortcuts } from '../hooks/useShortcuts';
 import { cx } from '../lib/cx';
 import { BadgeAwards } from '../features/path/BadgeAwards';
@@ -7,32 +7,25 @@ import { SpadeMark } from '../ui/SpadeMark';
 import { useApp } from './AppContext';
 import { ErrorBoundary } from './ErrorBoundary';
 import { Rail, TabBar } from './Rail';
+import { useDesktopCommands, useTaskSearch } from './useDesktopCommands';
 
 /** The frame around every page except the home screen: the rail on the left (a tab bar along the bottom on a phone), and the page itself. */
 export function Shell() {
   const app = useApp();
-  const navigate = useNavigate();
   const location = useLocation();
   const fullHeight = location.pathname === '/calendar' || location.pathname === '/week';
   // The boards fill the window on a wide screen, so each column scrolls by itself instead of the page.
   const boardPage = location.pathname === '/tasks' || location.pathname === '/applications';
 
-  useShortcuts({
-    // The quick-add bar if this page has one (the Calendar doesn't), else the form.
-    newTask: () => {
-      const bar = document.getElementById('quick-add');
-      if (bar) bar.focus();
-      else app.openDialog({ kind: 'task', mode: 'new', defaults: {} });
-    },
-    search: () => {
-      const focus = () => document.getElementById('task-search')?.focus();
-      if (document.getElementById('task-search')) return focus();
-      navigate('/tasks'); // search lives on the Tasks page: go there, then focus it
-      window.setTimeout(focus, 60);
-    },
-    undo: () => void app.undoLast(),
-    showHelp: () => app.openDialog({ kind: 'shortcuts' }),
-  });
+  // The quick-add bar if this page has one (the Calendar doesn't), else the form.
+  const newTask = () => {
+    const bar = document.getElementById('quick-add');
+    if (bar) bar.focus();
+    else app.openDialog({ kind: 'task', mode: 'new', defaults: {} });
+  };
+  const search = useTaskSearch();
+  useShortcuts({ newTask, search, undo: () => void app.undoLast(), showHelp: () => app.openDialog({ kind: 'shortcuts' }) });
+  useDesktopCommands({ newTask });
 
   return (
     <div className="md:flex">
@@ -50,8 +43,9 @@ export function Shell() {
       <Rail />
 
       <div className="min-w-0 flex-1">
-        <div className="flex h-12 items-center border-b border-hairline px-4 md:hidden">
-          <Link to="/" aria-label="Spade home" className="flex items-center gap-2">
+        {/* In the Mac app this bar is what drags a narrow window, and the name sits clear of the window buttons. */}
+        <div className="flex h-12 items-center border-b border-hairline px-4 mac-app:justify-center mac-app:[-webkit-app-region:drag] md:hidden">
+          <Link to="/" aria-label="Spade home" className="flex items-center gap-2 mac-app:[-webkit-app-region:no-drag]">
             <SpadeMark className="size-6" />
             <span className="font-display text-section italic">Spade</span>
           </Link>
